@@ -1,9 +1,16 @@
 # Session State — active
 
 > 재시작 시 자동 복구용(SessionStart 훅이 읽음). 최신 상태만 유지.
-> **Last Updated**: 2026-09-12 (저장소 폴더 재정비 완료)
+> **Last Updated**: 2026-09-13 (오늘 = 출근부 작업만, 컨텍스트 클리어 후 재시작)
 
-## ⭐ 다음 세션 시작점 (2026-09-12 기록)
+## ⭐ 오늘 (2026-09-13) — 출근부 ver02 작업, 클리어 후 여기서 시작
+
+- **범위 (GPT 검토 반영, 순서 변경)**: **⓪ todo 파서 재작성 ✅ 완료(2026-09-13 — `tools/desk/todo.js` 신설, 단위 테스트 12개 `node --test tools/desk/test/todo.test.js`, 임시 폴더 스모크 22항목 통과, 미커밋)** → **M00-01 이어가기 ← 다음** → M00-03 퇴근 보고 3칸 → (남으면) M00-02 마일스톤 읽기·게이지·완료 동기화. 창 하나, "커밋 푸시" = 전부. ⓪에서 API `todos`가 문장 배열 → Task 객체 배열(`{id,status,marker,text,note,noteDate}`)로 바뀌었고 `/api/todos`에 `action:'status'`(+`status`,`note`)가 생겼다. 상태를 바꾸는 버튼·퇴근 폼은 아직 없음(M00-01·03에서).
+- **스펙 정본** = [tools/desk/brief-gpt-2026-09-13.md](../../tools/desk/brief-gpt-2026-09-13.md) **맨 끝 "GPT 답변 요약 + 결정" 절이 §6보다 우선.** 핵심 결정(2026-09-13): 상태 5개 `[ ] [/] [>] [x] [-]` + 메모는 **다음 줄** `  > 진행: … · 날짜`(← 화살표 방식 폐기) · 퇴근 폼 [완료|진행 중|보류] 기본 진행 중, 메모 전부 선택 · 자동 체크는 이어가기 **1개만** · 마일스톤 완료는 **앱이 쓴다**(todo `[M00-NN]` 완료 → 파일 `[x]`, git add 범위에 milestones 추가) · 데브로그 picked/done은 ID 우선 · 주간 회고 문항은 "막힌 것·다음 주 3가지" 둘(더 나은 형식 탐색 중). 브리프·이 파일은 아직 미커밋.
+- **진행 순서**: ① `tools/desk/server.js`(todo 읽기/쓰기, clockout)와 `public/app.js`(renderTodos·renderPickPanel·renderClockOutForm)를 읽고 "왜/어떻게" 설명 → 승인 → 수정 ② 테스트 = `DESK_DATA_DIR` 임시 폴더 + `--no-git` ③ 실제 서버는 `출근.bat`로 재시작 ④ 출근부 켜서 오늘 출근 찍기(오늘 할 일: M00-01 · M00-05 옵시디언 · M00-06 맥북 링크) ⑤ 끝나면 M00 백로그 체크 + "다음에 할 것" 초안.
+- **PM 루틴**: 세션 시작에 오늘 3개 추천 + 이유 / 세션 끝에 다음 할 것 초안 + 백로그 갱신. 결정 사항: 상태 5개(취소 포함), 기본값 진행 중, 이월 2회면 쪼개기, 퍼센트 없음.
+
+## 이전 시작점 (2026-09-12 기록)
 
 **2026-09-12 저장소 폴더 재정비 완료** — 내역 = [production/reorg-2026-09.md](../reorg-2026-09.md).
 요약: ideation → `design/concept`, REF_GAME → `design/research/ref-games`, 프로토 → `_archive/unity-prototype`(캐시 삭제), 옛 데브로그·Origin/journal·src·.github·registry 삭제, 유니티 프로젝트 자리 = 최상위 `game/`(아직 없음), 작업 기록은 출근부 한 곳. 같은 날 저녁: 루트 CLAUDE.md를 "일하는 법" 중심 36줄로 개편, **Origin 트랙 해체**(로드맵만 `design/concept/build-roadmap.md`로), 순서 = **GDD v1 → game/** (병행 안 함).

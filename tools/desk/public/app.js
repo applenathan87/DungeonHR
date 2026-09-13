@@ -29,6 +29,27 @@ function el(tag, attrs = {}, ...children) {
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const uniq = (arr) => [...new Set(arr.map((x) => String(x).trim()).filter(Boolean))];
 
+// ── 할 일 도우미 (서버 todo.js 와 같은 규칙) ──
+/** 본문이 [M00-01] 처럼 시작하면 그 id, 아니면 null */
+const taskId = (s) => { const m = /^\[([A-Za-z]\w*-\d+)\]/.exec(String(s || '').trim()); return m ? m[1] : null; };
+/** 같은 할 일인가 — 본문이 같거나, 둘 다 id 가 있고 같으면 (문장을 고쳐도 데브로그의 picked/done 과 연결 유지) */
+const sameTask = (a, b) => { const x = String(a || '').trim(), y = String(b || '').trim(); if (x === y) return true; const i = taskId(x); return !!i && i === taskId(y); };
+const STATUS_LABEL = { doing: '진행 중', hold: '보류', cancelled: '취소' };
+/** 상태 표식. 열림·완료는 없음, 모르는 상태([?] 등)는 글자 그대로 보여 주고 건드리지 않는다 */
+function statusTag(t) {
+  const label = t.status === 'unknown' ? `[${t.marker}]` : STATUS_LABEL[t.status];
+  return label ? el('span', { class: `tag ${t.status}` }, label) : null;
+}
+/** 할 일 한 줄: 본문 + 상태 표식 + (있으면) 메모 줄 */
+function taskLabel(t, extraText) {
+  return el('span', { class: 'txt' },
+    el('span', { class: 't' }, t.text),
+    statusTag(t),
+    extraText ? el('span', { class: 'note' }, extraText) : null,
+    t.note ? el('div', { class: 'note' }, t.note) : null,
+  );
+}
+
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const pad2 = (n) => String(n).padStart(2, '0');
 const parseDate = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
@@ -205,8 +226,8 @@ function renderPickPanel(c) {
   for (const t of S.todos.open) {
     ul.append(el('li', {},
       el('label', {},
-        el('input', { type: 'checkbox', checked: pickSel.has(t), onchange: (e) => (e.target.checked ? pickSel.add(t) : pickSel.delete(t)) }),
-        el('span', {}, t),
+        el('input', { type: 'checkbox', checked: pickSel.has(t.text), onchange: (e) => (e.target.checked ? pickSel.add(t.text) : pickSel.delete(t.text)) }),
+        taskLabel(t),
       ),
     ));
   }
@@ -259,15 +280,15 @@ async function doBack() {
 
 function renderPickedList() {
   const ul = el('ul', { class: 'list picked' });
-  const doneSet = new Set(S.active.done);
-  for (const t of S.active.picked) {
-    const isDone = doneSet.has(t);
+  for (const text of S.active.picked) {
+    const isDone = S.active.done.some((d) => sameTask(d, text));
+    const info = S.todos.open.find((x) => sameTask(x.text, text)) || { status: isDone ? 'done' : 'open', text, note: '' };
     ul.append(el('li', { class: isDone ? 'is-done' : '' },
       el('label', {},
-        el('input', { type: 'checkbox', checked: isDone, onchange: () => todo(isDone ? 'undone' : 'done', t) }),
-        el('span', {}, t),
+        el('input', { type: 'checkbox', checked: isDone, onchange: () => todo(isDone ? 'undone' : 'done', text) }),
+        taskLabel({ ...info, text }),
       ),
-      el('button', { class: 'icon-btn', title: '오늘 목록에서 빼기', onclick: () => todo('unpick', t) }, '−'),
+      el('button', { class: 'icon-btn', title: '오늘 목록에서 빼기', onclick: () => todo('unpick', text) }, '−'),
     ));
   }
   if (!S.active.picked.length) ul.append(el('li', { class: 'muted' }, '오늘 고른 할 일이 없습니다.'));
@@ -275,11 +296,11 @@ function renderPickedList() {
 }
 
 function renderAddToToday() {
-  const rest = S.todos.open.filter((t) => !S.active.picked.includes(t));
+  const rest = S.todos.open.filter((t) => !S.active.picked.some((p) => sameTask(p, t.text)));
   const det = el('details', { class: 'add-today' }, el('summary', {}, `오늘 할 일에 추가 (${rest.length})`));
   const ul = el('ul', { class: 'list' });
   for (const t of rest) {
-    ul.append(el('li', {}, el('span', {}, t), el('button', { class: 'btn small', onclick: () => todo('pick', t) }, '오늘로')));
+    ul.append(el('li', {}, taskLabel(t), el('button', { class: 'btn small', onclick: () => todo('pick', t.text) }, '오늘로')));
   }
   if (!rest.length) ul.append(el('li', { class: 'muted' }, '남은 할 일이 없습니다.'));
   det.append(ul);
@@ -383,16 +404,16 @@ async function doClockOut(e) {
 function renderTodos() {
   const ul = $('#todo-list');
   ul.innerHTML = '';
-  const picked = new Set(S.active ? S.active.picked : []);
+  const isPicked = (t) => !!S.active && S.active.picked.some((p) => sameTask(p, t.text));
   for (const t of S.todos.open) {
-    ul.append(el('li', { class: picked.has(t) ? 'is-picked' : '' },
+    ul.append(el('li', { class: isPicked(t) ? 'is-picked' : '' },
       el('label', {},
-        el('input', { type: 'checkbox', onchange: () => todo('done', t) }),
-        el('span', {}, t),
+        el('input', { type: 'checkbox', onchange: () => todo('done', t.text) }),
+        taskLabel(t),
       ),
       el('span', { class: 'li-actions' },
-        S.active && !picked.has(t) ? el('button', { class: 'icon-btn', title: '오늘 할 일로', onclick: () => todo('pick', t) }, '+') : null,
-        el('button', { class: 'icon-btn danger', title: '삭제', onclick: () => confirm(`삭제할까요?\n${t}`) && todo('remove', t) }, '×'),
+        S.active && !isPicked(t) ? el('button', { class: 'icon-btn', title: '오늘 할 일로', onclick: () => todo('pick', t.text) }, '+') : null,
+        el('button', { class: 'icon-btn danger', title: '삭제', onclick: () => confirm(`삭제할까요?\n${t.text}`) && todo('remove', t.text) }, '×'),
       ),
     ));
   }
@@ -401,7 +422,10 @@ function renderTodos() {
   const dl = $('#done-list');
   dl.innerHTML = '';
   for (const t of S.todos.done.slice(0, 15)) {
-    dl.append(el('li', {}, el('label', {}, el('input', { type: 'checkbox', checked: true, onchange: () => todo('undone', t) }), el('span', {}, t))));
+    dl.append(el('li', {}, el('label', {},
+      el('input', { type: 'checkbox', checked: true, onchange: () => todo('undone', t.text) }),
+      taskLabel(t, t.noteDate),
+    )));
   }
   $('#done-count').textContent = S.todos.done.length ? `(${S.todos.done.length})` : '';
 }

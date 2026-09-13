@@ -15,6 +15,26 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
+const todoMd = require('./todo'); // todo.md 파서/직렬화 (모르는 줄은 보존)
+
+// ───────────────────────── 파일 읽기/쓰기 도우미 ─────────────────────────
+/** UTF-8 로 읽되, 메모장 등이 붙이는 BOM(맨 앞 보이지 않는 글자)은 뗀다 — 안 떼면 frontmatter 판정이 깨진다 */
+const readText = (file) => fs.readFileSync(file, 'utf8').replace(/^﻿/, '');
+
+/** 임시 파일에 다 쓴 뒤 이름을 바꿔 끼운다 — 쓰는 도중 꺼져도 원본이 반쪽 파일로 남지 않는다 */
+function writeFileAtomic(file, text) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  const tmp = `${file}.${process.pid}.tmp`;
+  fs.writeFileSync(tmp, text, 'utf8');
+  try {
+    fs.renameSync(tmp, file);
+  } catch (e) {
+    // 다른 프로그램이 파일을 잠근 경우(드묾) — 예전 방식으로라도 저장한다
+    console.warn('[desk] atomic 저장 실패, 직접 덮어씀:', e.message);
+    fs.writeFileSync(file, text, 'utf8');
+    try { fs.unlinkSync(tmp); } catch {}
+  }
+}
 
 // ───────────────────────── 설정 ─────────────────────────
 const ROOT = __dirname; // tools/desk
@@ -32,7 +52,7 @@ const DEFAULTS = {
 
 function loadConfig() {
   try {
-    return Object.assign({}, DEFAULTS, JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8')));
+    return Object.assign({}, DEFAULTS, JSON.parse(readText(CONFIG_PATH)));
   } catch (e) {
     console.warn('[desk] desk.config.json 을 읽지 못해 기본값을 씁니다:', e.message);
     return Object.assign({}, DEFAULTS);
@@ -200,13 +220,12 @@ const dayPath = (date) => path.join(DEVLOG_DIR, `${date}.md`);
 function readDay(date) {
   const p = dayPath(date);
   if (!fs.existsSync(p)) return null;
-  const { fm, body } = parseDoc(fs.readFileSync(p, 'utf8'));
+  const { fm, body } = parseDoc(readText(p));
   return { date, fm, body };
 }
 
 function writeDay(day) {
-  fs.mkdirSync(DEVLOG_DIR, { recursive: true });
-  fs.writeFileSync(dayPath(day.date), serializeFrontmatter(day.fm) + '\n\n' + day.body, 'utf8');
+  writeFileAtomic(dayPath(day.date), serializeFrontmatter(day.fm) + '\n\n' + day.body);
 }
 
 function listDays() {
@@ -272,82 +291,64 @@ function summarizeDay(d) {
 }
 
 // ───────────────────────── 할 일 (todo.md) ─────────────────────────
-function readTodos() {
-  if (!fs.existsSync(TODO_PATH)) return { open: [], done: [] };
-  const open = [];
-  const done = [];
-  for (const line of fs.readFileSync(TODO_PATH, 'utf8').split(/\r?\n/)) {
-    const m = line.match(/^\s*[-*]\s+\[( |x|X)\]\s+(.*)$/);
-    if (!m) continue;
-    (m[1] === ' ' ? open : done).push(m[2].trim());
-  }
-  return { open, done };
-}
+// 파싱·직렬화는 todo.js 가 맡는다. 여기서는 파일을 읽고(loadTodoDoc) 고친 뒤 저장(saveTodoDoc)만 한다.
+// 같은 할 일인지는 todoMd.sameTask 로 비교한다 — 본문이 같거나 [M00-01] 같은 id 가 같으면 같은 것 (문장을 고쳐도 연결 유지).
 
-function writeTodos(t) {
-  const txt = [
-    '# 할 일',
-    '',
-    '> 출근부 앱(tools/desk)이 읽고 쓰는 파일. 손으로 고쳐도 됩니다 (형식: `- [ ] 할 일`).',
-    '',
-    '## 할 일',
-    ...t.open.map((x) => `- [ ] ${x}`),
-    '',
-    '## 완료',
-    ...t.done.map((x) => `- [x] ${x}`),
-    '',
-  ].join('\n');
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(TODO_PATH, txt, 'utf8');
-}
+const loadTodoDoc = () => todoMd.parse(fs.existsSync(TODO_PATH) ? readText(TODO_PATH) : todoMd.TEMPLATE);
+const saveTodoDoc = (doc) => writeFileAtomic(TODO_PATH, todoMd.serialize(doc));
 
-const stripDoneDate = (s) => s.replace(/\s*\(\d{4}-\d{2}-\d{2}\)\s*$/, '');
+/** 화면용: { open: [{id,status,marker,text,note,noteDate}…] (진행 중→열림→모름→보류), done: [완료·취소] } */
+const readTodos = () => todoMd.split(loadTodoDoc());
 
-/** 오늘 파일(열린 세션 우선, 없으면 오늘 날짜 파일)에 done 항목을 반영 */
+/** 오늘 파일(열린 세션 우선, 없으면 오늘 날짜 파일)의 done 목록에 넣거나 뺀다 */
 function markDoneInDay(text, add) {
   const day = findActiveDay() || readDay(todayStr());
   if (!day) return;
-  const done = uniq(day.fm.done || []);
-  day.fm.done = add ? uniq([...done, text]) : done.filter((x) => x !== text);
+  const done = uniq(day.fm.done || []).filter((x) => !todoMd.sameTask(x, text));
+  day.fm.done = add ? [...done, text] : done;
   writeDay(day);
 }
 
-function todoAction(action, textRaw) {
+/**
+ * 할 일 조작. action = add | remove | done | undone | status | pick | unpick
+ * extra.status ('open'|'doing'|'hold'|'done'|'cancelled') 와 extra.note 는 status 동작에서 쓴다.
+ */
+function todoAction(action, textRaw, extra = {}) {
   const text = String(textRaw || '').trim();
   if (!text) throw new Error('내용이 비어 있습니다');
-  const t = readTodos();
   const today = todayStr();
+
+  if (action === 'pick' || action === 'unpick') {
+    const day = findActiveDay();
+    if (!day) throw new Error('출근 중일 때만 오늘 할 일을 바꿀 수 있습니다');
+    const picked = uniq(day.fm.picked || []).filter((x) => !todoMd.sameTask(x, text));
+    day.fm.picked = action === 'pick' ? [...picked, text] : picked;
+    writeDay(day);
+    return;
+  }
+
+  const doc = loadTodoDoc();
+  let block = todoMd.findTask(doc, text);
+  const closed = (s) => todoMd.CLOSED.includes(s);
+
   switch (action) {
     case 'add':
-      if (!t.open.includes(text)) t.open.push(text);
-      writeTodos(t);
+      if (!block) { todoMd.addTask(doc, text); saveTodoDoc(doc); }
       break;
     case 'remove':
-      t.open = t.open.filter((x) => x !== text);
-      t.done = t.done.filter((x) => x !== text && stripDoneDate(x) !== text);
-      writeTodos(t);
+      if (block) { todoMd.removeTask(doc, block); saveTodoDoc(doc); }
       break;
     case 'done':
-      t.open = t.open.filter((x) => x !== text);
-      t.done = [`${text} (${today})`, ...t.done.filter((x) => stripDoneDate(x) !== text)];
-      writeTodos(t);
-      markDoneInDay(text, true);
-      break;
-    case 'undone': {
-      const plain = stripDoneDate(text);
-      t.done = t.done.filter((x) => x !== text && stripDoneDate(x) !== plain);
-      if (!t.open.includes(plain)) t.open.unshift(plain);
-      writeTodos(t);
-      markDoneInDay(plain, false);
-      break;
-    }
-    case 'pick':
-    case 'unpick': {
-      const day = findActiveDay();
-      if (!day) throw new Error('출근 중일 때만 오늘 할 일을 바꿀 수 있습니다');
-      const picked = uniq(day.fm.picked || []);
-      day.fm.picked = action === 'pick' ? uniq([...picked, text]) : picked.filter((x) => x !== text);
-      writeDay(day);
+    case 'undone':
+    case 'status': {
+      const status = action === 'done' ? 'done' : action === 'undone' ? 'open' : String(extra.status || '');
+      if (!['open', 'doing', 'hold', 'done', 'cancelled'].includes(status)) throw new Error('알 수 없는 상태: ' + status);
+      if (!block) block = todoMd.addTask(doc, text); // 목록에 없던 것(오늘 고른 뒤 지운 항목 등)도 완료로 남길 수 있게
+      const wasClosed = closed(block.status);
+      todoMd.setStatus(doc, block, status, extra.note, today);
+      saveTodoDoc(doc);
+      if (status === 'done') markDoneInDay(block.text, true);
+      else if (wasClosed) markDoneInDay(block.text, false);
       break;
     }
     default:
@@ -658,7 +659,7 @@ async function handle(req, res) {
 
     if (req.method === 'POST' && p === '/api/todos') {
       const body = await readBody(req);
-      todoAction(body.action, body.text);
+      todoAction(body.action, body.text, { status: body.status, note: body.note });
       return json(res, { ok: true, state: stateJson() });
     }
 
@@ -680,7 +681,7 @@ function openBrowser(url) {
 }
 
 fs.mkdirSync(DEVLOG_DIR, { recursive: true });
-if (!fs.existsSync(TODO_PATH)) writeTodos({ open: [], done: [] });
+if (!fs.existsSync(TODO_PATH)) writeFileAtomic(TODO_PATH, todoMd.TEMPLATE);
 pomoLoad();      // 재시작 전에 돌던 뽀모도로가 있으면 이어간다 (이미 지났으면 바로 울림)
 pomoSchedule();
 

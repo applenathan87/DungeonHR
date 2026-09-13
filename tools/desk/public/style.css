@@ -178,8 +178,15 @@ h1 { font-size: 30px; margin-top: 2px; }
 .list label { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; min-width: 0; }
 .list label span { overflow-wrap: anywhere; }
 .list input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex: none; }
-.list li.is-done label span, .list.done label span { color: var(--muted); text-decoration: line-through; }
-.list li.is-picked label span::after { content: " · 오늘"; color: var(--accent); font-size: 12px; }
+.list li.is-done label .t, .list.done label .t { color: var(--muted); text-decoration: line-through; }
+.list li.is-picked label .t::after { content: " · 오늘"; color: var(--accent); font-size: 12px; }
+/* 할 일 한 줄 = 본문(.t) + 상태 표식(.tag) + 메모(.note) */
+.list .txt { flex: 1; min-width: 0; }
+.list .tag { display: inline-block; margin-left: 6px; padding: 1px 7px; font-size: 11px; line-height: 1.5; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); vertical-align: 1px; }
+.list .tag.doing { color: var(--accent); border-color: var(--accent); }
+.list .tag.unknown { font-family: ui-monospace, Consolas, monospace; }
+.list span.note { margin-left: 8px; font-size: 12px; color: var(--muted); }
+.list div.note { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .li-actions { display: flex; gap: 2px; flex: none; }
 .list.pick li { padding: 10px 4px; }
 .list.picked li { padding: 10px 4px; font-size: 16px; }
