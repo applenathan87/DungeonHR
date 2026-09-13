@@ -149,6 +149,48 @@ test('알 수 없는 상태는 바꿀 수 없다', () => {
   assert.throws(() => todo.setStatus(doc, todo.findTask(doc, '뭔지 모르는 상태'), 'weird', '', D));
 });
 
+// ── 출근 화면 고르기 목록 (pickList) ──
+const PICK_SRC = [
+  '## 할 일',
+  '- [ ] [M00-02] 마일스톤 읽기',
+  '- [/] 고블린 텍스처',
+  '  > 진행: 절반 · 2026-09-11',
+  '- [ ] 콜로소 강의',
+  '- [>] 스트림덱',
+  '  > 보류: 장비 · 2026-09-10',
+  '- [/] 오크 리깅',
+  '  > 진행: 팔만 · 2026-09-12',
+  '- [?] 모르는 것',
+  '- [ ] 새 항목',
+  '## 완료',
+  '- [x] 끝난 것',
+  '  > 완료: 2026-09-12',
+  '',
+].join('\n');
+const pickOf = (lastNext) => { const { open, done } = todo.split(todo.parse(PICK_SRC)); return todo.pickList([...open, ...done], lastNext); };
+
+test('pickList: 진행 중 → 어제의 다음(적은 순서) → 열림 → 모름, 보류는 따로', () => {
+  const p = pickOf(['새 항목', '[M00-02] 마일스톤 (문장 바뀜)']);
+  assert.deepEqual(p.items.map((t) => t.text), ['고블린 텍스처', '오크 리깅', '새 항목', '[M00-02] 마일스톤 읽기', '콜로소 강의', '모르는 것']);
+  assert.deepEqual(p.items.map((t) => t.reason), [null, null, 'next', 'next', null, null]);
+  assert.deepEqual(p.hold.map((t) => t.text), ['스트림덱']);
+  assert.deepEqual(p.unmatched, []);
+});
+
+test('pickList: 미리 체크 = 어제의 다음 첫 줄 → 없으면 메모 날짜 최신 진행 중 → 없으면 없음', () => {
+  assert.equal(pickOf(['콜로소 강의', '새 항목']).preselect, '콜로소 강의');
+  assert.equal(pickOf(['끝난 것', '새 항목']).preselect, '새 항목'); // 완료된 줄은 건너뛴다
+  assert.equal(pickOf([]).preselect, '오크 리깅'); // 진행 중 둘 중 메모 날짜가 최근인 것
+  const { open } = todo.split(todo.parse('## 할 일\n- [ ] 하나\n- [ ] 둘\n'));
+  assert.equal(todo.pickList(open, []).preselect, null);
+});
+
+test('pickList: 어제 줄이 목록에 없으면 unmatched, 완료와 같은 줄은 unmatched 아님', () => {
+  const p = pickOf(['없는 줄', '끝난 것']);
+  assert.deepEqual(p.unmatched, ['없는 줄']);
+  assert.equal(p.preselect, '오크 리깅');
+});
+
 test('TEMPLATE 은 그 자체로 왕복된다', () => {
   assert.equal(todo.serialize(todo.parse(todo.TEMPLATE)), todo.TEMPLATE);
 });

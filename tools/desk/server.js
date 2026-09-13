@@ -107,6 +107,8 @@ const computeHours = (sessions) =>
   Math.round((sessions.reduce((acc, s) => acc + sessionMinutes(s), 0) / 60) * 10) / 10;
 
 const uniq = (arr) => [...new Set(arr.map((x) => String(x).trim()).filter(Boolean))];
+/** 폼 칸(여러 줄 문자열) 또는 배열 → 줄 배열 */
+const asLines = (v) => (Array.isArray(v) ? v : String(v || '').split(/\r?\n/));
 
 // ───────────────────────── frontmatter (YAML 부분집합) ─────────────────────────
 // 지원 형식: `key: 값`, `key: []`, 그리고
@@ -356,6 +358,24 @@ function todoAction(action, textRaw, extra = {}) {
   }
 }
 
+/**
+ * 이어가기(M00-01): 퇴근 보고 "다음에 할 것"의 각 줄을 todo.md "할 일" 절 끝에 새 항목으로 넣는다.
+ * 같은 문장이거나 같은 [M00-NN] id 가 이미 있으면(완료 포함) 건너뛴다 → 같은 날 두 번 퇴근해도 중복이 안 생긴다.
+ * 돌려주는 값 = 실제로 추가된 본문들
+ */
+function carryNextToTodo(lines) {
+  const doc = loadTodoDoc();
+  const added = [];
+  for (const raw of lines) {
+    const text = String(raw || '').trim().replace(/^[-*]\s+/, ''); // "- " 로 시작해도 본문만
+    if (!text || todoMd.findTask(doc, text)) continue;
+    todoMd.addTask(doc, text);
+    added.push(text);
+  }
+  if (added.length) saveTodoDoc(doc);
+  return added;
+}
+
 // ───────────────────────── 출근 / 퇴근 ─────────────────────────
 function clockIn(pickedRaw) {
   if (findActiveDay()) throw new Error('이미 출근 중입니다');
@@ -392,7 +412,6 @@ function clockOut(fields) {
   d.fm.status = 'closed';
   d.fm.hours = computeHours(sessions);
   d.fm.title = `Day ${d.fm.day} — ${summary}`;
-  const asLines = (v) => (Array.isArray(v) ? v : String(v || '').split(/\r?\n/));
   d.body = buildBody(
     { did: asLines(fields.did), learned: asLines(fields.learned), blocked: asLines(fields.blocked), next: asLines(fields.next) },
     d.body,
@@ -541,6 +560,10 @@ function stateJson() {
   const days = listDays().map(summarizeDay);
   const active = days.find((d) => d.status === 'open' || d.status === 'away') || null;
   const todayDay = days.find((d) => d.date === today) || null;
+  const todos = readTodos();
+  // "어제" = 가장 최근에 퇴근한 날 (오늘 퇴근했다가 다시 출근하면 오늘). 그날의 "다음에 할 것"이 출근 추천의 재료
+  const lastClosed = [...days].reverse().find((d) => d.status === 'closed') || null;
+  const lastNext = { date: lastClosed ? lastClosed.date : null, lines: lastClosed ? lastClosed.next : [] };
   return {
     now: new Date().toISOString(),
     nowMs: Date.now(),
@@ -549,7 +572,9 @@ function stateJson() {
     todayDay,
     pomo, // 서버의 뽀모도로 시계 (없으면 null)
     nextDayNumber: todayDay ? todayDay.day : nextDayNumber(today),
-    todos: readTodos(),
+    todos,
+    lastNext,
+    pick: todoMd.pickList([...todos.open, ...todos.done], lastNext.lines), // 출근 화면 고르기 목록 + 미리 체크 1개
     days,
     config: {
       seasonStart: config.seasonStart,
@@ -620,9 +645,10 @@ async function handle(req, res) {
     if (req.method === 'POST' && p === '/api/clockout') {
       const body = await readBody(req);
       const d = clockOut(body);
+      const added = carryNextToTodo(asLines(body.next)); // 커밋 전에 todo.md 를 갱신해야 같은 커밋에 들어간다
       const msg = `desk: ${d.date} 퇴근 (${d.fm.hours}h) — ${stripDayPrefix(d.fm.title)}`;
       const gitResult = await pushData(msg);
-      return json(res, { ok: true, day: summarizeDay(d), git: gitResult, state: stateJson() });
+      return json(res, { ok: true, day: summarizeDay(d), added, git: gitResult, state: stateJson() });
     }
 
     if (req.method === 'POST' && p === '/api/away') {

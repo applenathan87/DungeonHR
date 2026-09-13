@@ -184,6 +184,9 @@ h1 { font-size: 30px; margin-top: 2px; }
 .list .txt { flex: 1; min-width: 0; }
 .list .tag { display: inline-block; margin-left: 6px; padding: 1px 7px; font-size: 11px; line-height: 1.5; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); vertical-align: 1px; }
 .list .tag.doing { color: var(--accent); border-color: var(--accent); }
+.list .tag.next { color: var(--good); border-color: var(--good); }
+details.hold { margin-top: 6px; }
+details.hold .list li { padding: 6px 4px; }
 .list .tag.unknown { font-family: ui-monospace, Consolas, monospace; }
 .list span.note { margin-left: 8px; font-size: 12px; color: var(--muted); }
 .list div.note { font-size: 12px; color: var(--muted); margin-top: 2px; }
@@ -371,3 +374,18 @@ textarea { resize: vertical; min-height: 64px; }
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
 }
 .toast.error { border-left-color: var(--danger); }
+
+/* ── 출근 전 "오늘" 칸(tray)과 대기 목록 — 카드를 끌어 옮긴다 ── */
+#todo-hint { margin: -6px 0 10px; }
+.tray-wrap { margin-top: 14px; }
+.tray-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.tray-head .warn { color: var(--accent); }
+.list.tray { min-height: 120px; border: 1px dashed transparent; border-radius: 10px; padding: 2px 6px; transition: border-color 0.15s, background 0.15s; }
+/* 비어 있을 때는 끌어다 놓을 표적이 크게 보이도록 높이를 키우고 안내문을 가운데에 */
+.list.tray.empty { min-height: 260px; border-color: var(--line); display: flex; align-items: center; justify-content: center; }
+.list.tray.over { border-color: var(--accent); background: rgba(242, 169, 59, 0.06); }
+.list.tray li.placeholder { display: block; border-bottom: none; color: var(--muted); font-size: 14px; line-height: 1.8; text-align: center; max-width: 360px; padding: 16px 20px; }
+.list li[draggable="true"] { cursor: grab; }
+.list li.dragging { opacity: 0.45; }
+.grip { color: var(--muted); font-size: 12px; letter-spacing: -3px; user-select: none; flex: none; padding-right: 4px; }
+#todo-card.over { outline: 1px dashed var(--accent); outline-offset: -6px; }

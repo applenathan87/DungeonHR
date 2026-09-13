@@ -187,6 +187,44 @@ function split(doc) {
   return { open, done: tasks.filter((t) => CLOSED.includes(t.status)) };
 }
 
+// ───────────────────────── 출근 화면 "고르기" 목록 ─────────────────────────
+/**
+ * 규칙(2026-09-13 결정): 진행 중 → 어제의 "다음에 할 것"(적은 순서) → 열림 → 모르는 상태. 보류는 따로(접힘).
+ * 미리 체크는 1개만: 어제의 다음 첫 줄에 해당하는 항목 → 없으면 메모 날짜가 가장 최근인 진행 중 → 없으면 없음.
+ * (관성으로 어제 일을 전부 다시 고르는 걸 막으려고 하나만 체크한다)
+ * 규칙을 여기(서버)에 두는 이유: 나중에 today.md·주간 회고가 같은 규칙을 그대로 쓴다.
+ *
+ * tasks = publicTask 배열(완료 섞여도 됨), lastNext = 어제 퇴근 때 적은 줄들
+ * → { items: [{…task, reason: 'next'|null}], hold: [보류], preselect: 본문|null, unmatched: [어제 줄 중 목록에 없는 것] }
+ */
+function pickList(tasks, lastNext = []) {
+  const next = lastNext.map((s) => String(s || '').trim()).filter(Boolean);
+  const nextIndex = (t) => next.findIndex((n) => sameTask(n, t.text));
+  const scored = tasks
+    .filter((t) => !CLOSED.includes(t.status))
+    .map((t, i) => {
+      const ni = nextIndex(t);
+      const rank = t.status === 'hold' ? 4 : t.status === 'doing' ? 0 : ni >= 0 ? 1 : t.status === 'open' ? 2 : 3;
+      return { t: { ...t, reason: ni >= 0 ? 'next' : null }, rank, sub: rank === 1 ? ni : i };
+    });
+  scored.sort((a, b) => a.rank - b.rank || a.sub - b.sub);
+  const all = scored.map((x) => x.t);
+  const items = all.filter((t) => t.status !== 'hold');
+  const hold = all.filter((t) => t.status === 'hold');
+
+  let preselect = null;
+  for (const n of next) {
+    const hit = items.find((t) => sameTask(n, t.text));
+    if (hit) { preselect = hit.text; break; }
+  }
+  if (!preselect) {
+    const doing = items.filter((t) => t.status === 'doing').sort((a, b) => String(b.noteDate || '').localeCompare(String(a.noteDate || '')));
+    if (doing.length) preselect = doing[0].text;
+  }
+  const unmatched = next.filter((n) => !tasks.some((t) => sameTask(n, t.text)));
+  return { items, hold, preselect, unmatched };
+}
+
 // ───────────────────────── 수정 ─────────────────────────
 
 /** `## name` 절의 범위 { start: 제목 블록 인덱스, end: 다음 제목(같거나 높은 단계) 인덱스 }. 없으면 만들어서 돌려준다 */
@@ -266,7 +304,7 @@ function setText(doc, block, text) {
 
 module.exports = {
   TEMPLATE, SECTION_OPEN, SECTION_DONE, CLOSED, OPEN_ORDER,
-  parse, serialize, tasksOf, findTask, publicTask, split,
+  parse, serialize, tasksOf, findTask, publicTask, split, pickList,
   addTask, removeTask, setStatus, setText,
   taskId, sameTask,
 };

@@ -40,12 +40,13 @@ function statusTag(t) {
   const label = t.status === 'unknown' ? `[${t.marker}]` : STATUS_LABEL[t.status];
   return label ? el('span', { class: `tag ${t.status}` }, label) : null;
 }
-/** 할 일 한 줄: 본문 + 상태 표식 + (있으면) 메모 줄 */
-function taskLabel(t, extraText) {
+/** 할 일 한 줄: 본문 + 상태 표식 + (옵션) 추가 표식들·날짜 + (있으면) 메모 줄 */
+function taskLabel(t, opts = {}) {
   return el('span', { class: 'txt' },
     el('span', { class: 't' }, t.text),
     statusTag(t),
-    extraText ? el('span', { class: 'note' }, extraText) : null,
+    opts.tags || null,
+    opts.date ? el('span', { class: 'note' }, opts.date) : null,
     t.note ? el('div', { class: 'note' }, t.note) : null,
   );
 }
@@ -68,8 +69,9 @@ async function api(path, body) {
 
 // ───────────────────────── 상태 ─────────────────────────
 let S = null;            // 서버가 준 상태 (/api/state)
-let view = 'idle';       // 근무 카드의 화면: idle | pick | clockout
-let pickSel = new Set(); // 출근 시 고른 할 일
+let view = 'idle';       // 근무 카드의 화면: idle | clockout (출근 전 고르기는 idle 화면의 "오늘" 칸이 맡는다)
+let tray = null;         // 출근 전 왼쪽 "오늘" 칸에 올려 둔 할 일 본문들 (순서 = 사용자 순서). null = 아직 초기화 전
+let drag = null;         // 끌고 있는 카드 { text, from: 'tray' | 'backlog' }
 let heatIndex = {};      // date → day 요약 (툴팁용)
 
 async function load() {
@@ -192,16 +194,18 @@ function renderWork() {
     return;
   }
 
-  if (view === 'pick') return renderPickPanel(c);
-
+  // 출근 전: 왼쪽 카드가 곧 "오늘" 칸. 오른쪽 대기 목록에서 카드를 끌어(또는 "오늘로") 올려 두고 출근 도장을 찍는다.
+  // 위치가 곧 상태 — 왼쪽에 있으면 오늘 할 일, 오른쪽에 있으면 대기. 고르기용 체크박스는 없다.
+  syncTray();
   if (S.todayDay) {
     c.append(
       el('span', { class: 'status-badge closed' }, '퇴근 완료'),
       el('h2', {}, `Day ${S.todayDay.day} — ${S.todayDay.summary}`),
       el('p', { class: 'muted' }, `오늘 ${fmtHours(S.todayDay.hours)} · ${S.todayDay.sessions.join(', ')}`),
+      renderTray(),
       el('div', { class: 'actions' },
         el('button', { class: 'btn', onclick: () => openDevlog(S.today) }, '오늘 일지 보기'),
-        el('button', { class: 'btn primary', onclick: () => { view = 'pick'; renderWork(); } }, '다시 출근'),
+        el('button', { class: 'btn primary big', onclick: doClockIn }, '다시 출근'),
       ),
     );
     return;
@@ -210,41 +214,122 @@ function renderWork() {
   c.append(
     el('span', { class: 'status-badge idle' }, '퇴근 상태'),
     el('h2', {}, `Day ${S.nextDayNumber}을 시작할까요?`),
-    el('p', { class: 'muted' }, '출근하면 오늘 할 일을 고르고, 오늘 날짜의 데브로그 파일이 생깁니다.'),
+    el('p', { class: 'muted' }, '오른쪽 대기 목록에서 카드를 끌어 오늘 할 일을 올려 두고 출근 도장을 찍으세요. 출근하면 오늘 날짜의 데브로그 파일이 생깁니다.'),
+    renderTray(),
     el('div', { class: 'actions' },
-      el('button', { class: 'btn primary big', onclick: () => { view = 'pick'; renderWork(); } }, '출근'),
-    ),
-  );
-}
-
-function renderPickPanel(c) {
-  c.append(
-    el('h2', {}, '오늘 할 일 고르기'),
-    el('p', { class: 'muted' }, `${S.config.maxPick}개 이하를 권장합니다. 고르지 않고 출근해도 됩니다.`),
-  );
-  const ul = el('ul', { class: 'list pick' });
-  for (const t of S.todos.open) {
-    ul.append(el('li', {},
-      el('label', {},
-        el('input', { type: 'checkbox', checked: pickSel.has(t.text), onchange: (e) => (e.target.checked ? pickSel.add(t.text) : pickSel.delete(t.text)) }),
-        taskLabel(t),
-      ),
-    ));
-  }
-  if (!S.todos.open.length) ul.append(el('li', { class: 'muted' }, '할 일 목록이 비어 있습니다. 오른쪽 카드에서 추가하세요.'));
-  c.append(
-    ul,
-    el('div', { class: 'actions' },
-      el('button', { class: 'btn', onclick: () => { view = 'idle'; renderWork(); } }, '취소'),
       el('button', { class: 'btn primary big', onclick: doClockIn }, '출근 도장 찍기'),
     ),
   );
 }
 
+// ── 출근 전 "오늘" 칸 (tray) ──
+// 순서·추천은 서버(state.pick)가 정한다. 화면은 tray(사용자 순서)와 대기 목록(서버 순서)을 보여 주고 카드를 옮길 뿐이다.
+
+/** tray 초기화·정리: 처음이면 서버 추천 1장을 올려 두고 시작, 목록에서 사라진 항목은 뺀다 */
+function syncTray() {
+  const pick = S.pick || { items: [], preselect: null };
+  if (tray === null) tray = pick.preselect ? [pick.preselect] : [];
+  tray = tray.filter((text) => pick.items.some((t) => sameTask(t.text, text)));
+}
+/** tray 본문들을 Task 객체로 (사용자 순서 유지) */
+const trayItems = () => tray.map((text) => S.pick.items.find((t) => sameTask(t.text, text))).filter(Boolean);
+/** 대기 목록 = 서버가 정한 순서에서 tray 에 올라간 것을 뺀 나머지 */
+const backlogItems = () => S.pick.items.filter((t) => !tray.some((x) => sameTask(x, t.text)));
+/** tray 의 index 자리에 넣는다 (이미 있으면 그 자리에서 빼서 옮김) */
+function trayInsert(text, index) {
+  const cur = tray.findIndex((x) => sameTask(x, text));
+  if (cur >= 0) { tray.splice(cur, 1); if (cur < index) index--; }
+  tray.splice(Math.max(0, Math.min(index, tray.length)), 0, text);
+}
+const trayRemove = (text) => { tray = tray.filter((x) => !sameTask(x, text)); };
+/** 드롭 위치: 포인터가 어느 카드의 위쪽 절반에 있으면 그 카드 앞, 아니면 맨 뒤 */
+function dropIndex(ul, y) {
+  const rows = [...ul.querySelectorAll('li[data-text]')];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i].getBoundingClientRect();
+    if (y < r.top + r.height / 2) return i;
+  }
+  return rows.length;
+}
+const rerenderIdle = () => { renderWork(); renderTodos(); };
+
+// 드래그: 브라우저 기본 API. 카드(li)에서 시작해 tray 또는 오른쪽 카드에 놓는다
+function startDrag(e, text, from) {
+  drag = { text, from };
+  e.dataTransfer.setData('text/plain', text);
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.classList.add('dragging');
+}
+function endDrag(e) {
+  e.currentTarget.classList.remove('dragging');
+  drag = null;
+  $('#todo-card').classList.remove('over');
+}
+const nextTag = (t) => (t.reason === 'next' ? el('span', { class: 'tag next' }, '어제 이어가기') : null);
+
+/** 왼쪽 "오늘" 칸. 드롭 = 올리기·순서 바꾸기, "−" = 대기로 내리기 */
+function renderTray() {
+  const items = trayItems();
+  const max = S.config.maxPick;
+  const over = items.length > max;
+  const ul = el('ul', {
+    class: `list tray${items.length ? '' : ' empty'}`,
+    ondragover: (e) => { if (!drag) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; ul.classList.add('over'); },
+    ondragleave: (e) => { if (!ul.contains(e.relatedTarget)) ul.classList.remove('over'); },
+    ondrop: (e) => { e.preventDefault(); ul.classList.remove('over'); if (!drag) return; trayInsert(drag.text, dropIndex(ul, e.clientY)); drag = null; rerenderIdle(); },
+  });
+  for (const t of items) {
+    ul.append(el('li', { draggable: 'true', 'data-text': t.text, ondragstart: (e) => startDrag(e, t.text, 'tray'), ondragend: endDrag },
+      el('span', { class: 'grip', title: '끌어서 순서 바꾸기' }, '⋮⋮'),
+      taskLabel(t, { tags: nextTag(t) }),
+      el('button', { class: 'icon-btn', title: '대기 목록으로 내리기', onclick: () => { trayRemove(t.text); rerenderIdle(); } }, '−'),
+    ));
+  }
+  if (!items.length) ul.append(el('li', { class: 'placeholder' }, `오른쪽 대기 목록에서 카드를 끌어 오세요 · ${max}개 이하 권장 · 고르지 않고 출근해도 됩니다`));
+  return el('div', { class: 'tray-wrap' },
+    el('div', { class: 'tray-head' },
+      el('span', { class: 'field-label' }, '오늘 할 일'),
+      el('span', { class: `muted small-text${over ? ' warn' : ''}` }, `${items.length}/${max}${over ? ' · 권장 개수를 넘었습니다' : ''}`),
+    ),
+    ul,
+  );
+}
+
+/** 출근 전 오른쪽 = 대기 목록 (서버 순서). 끌거나 "오늘로"로 왼쪽에 올린다. 완료 체크는 여기 없다 — 실수로 완료되는 걸 막는다 */
+function renderBacklog(ul, extra) {
+  syncTray();
+  const pick = S.pick;
+  $('#todo-hint').textContent = '왼쪽 "오늘 할 일"로 끌어 올리거나 "오늘로"를 누르세요. 순서는 진행 중 → 어제 이어가기 → 열림.';
+  $('#todo-hint').hidden = false;
+  const rest = backlogItems();
+  for (const t of rest) {
+    ul.append(el('li', { draggable: 'true', 'data-text': t.text, ondragstart: (e) => startDrag(e, t.text, 'backlog'), ondragend: endDrag },
+      el('span', { class: 'grip', title: '끌어서 오늘로' }, '⋮⋮'),
+      taskLabel(t, { tags: nextTag(t) }),
+      el('span', { class: 'li-actions' },
+        el('button', { class: 'btn small', onclick: () => { trayInsert(t.text, tray.length); rerenderIdle(); } }, '오늘로'),
+        el('button', { class: 'icon-btn danger', title: '삭제', onclick: () => confirm(`삭제할까요?\n${t.text}`) && todo('remove', t.text) }, '×'),
+      ),
+    ));
+  }
+  if (!rest.length) ul.append(el('li', { class: 'muted' }, tray.length ? '대기 중인 할 일이 없습니다.' : '할 일이 없습니다. 위에서 추가하세요.'));
+  if (pick.unmatched.length) extra.append(el('p', { class: 'muted small-text' }, `어제 적은 것 중 목록에 없음: ${pick.unmatched.join(' · ')}`));
+  if (pick.hold.length) {
+    // 보류는 접어 둔다. 펼치면 항목마다 "해제" → 열림으로 되돌아와 대기 목록에 다시 나타난다
+    const det = el('details', { class: 'hold' }, el('summary', {}, `보류 ${pick.hold.length}개`));
+    const hl = el('ul', { class: 'list' });
+    for (const t of pick.hold) {
+      hl.append(el('li', {}, taskLabel(t), el('button', { class: 'btn small', title: '열림으로 되돌리기', onclick: () => todo('status', t.text, { status: 'open' }) }, '해제')));
+    }
+    det.append(hl);
+    extra.append(det);
+  }
+}
+
 async function doClockIn() {
   try {
-    const r = await api('/api/clockin', { picked: [...pickSel] });
-    pickSel.clear();
+    const r = await api('/api/clockin', { picked: tray || [] }); // tray 순서 = 오늘 할 일 순서로 기록
+    tray = null;
     view = 'idle';
     S = r.state;
     render();
@@ -378,6 +463,7 @@ async function doClockOut(e) {
     const r = await api('/api/clockout', body);
     view = 'idle';
     S = r.state;
+    tray = null; // 다음 출근의 "오늘" 칸은 새 추천으로 다시 시작
     updateTitle();
     render();
     const d = r.day;
@@ -388,11 +474,12 @@ async function doClockOut(e) {
       confetti: true,
     });
     const g = r.git || {};
-    if (g.skipped) toast(`저장 완료 (git 건너뜀: ${g.reason})`);
+    const plus = r.added && r.added.length ? ` · 다음에 할 것 ${r.added.length}개를 할 일에 추가` : '';
+    if (g.skipped) toast(`저장 완료${plus} (git 건너뜀: ${g.reason})`);
     else if (!g.ok) toast(`저장은 됐지만 git 커밋 실패: ${g.error}`, true);
-    else if (g.nothing) toast('저장 완료 · 커밋할 변경 없음');
-    else if (g.pushed) toast('저장 · 커밋 · 푸시 완료');
-    else toast(`저장 · 커밋 완료, 푸시 실패: ${g.error}`, true);
+    else if (g.nothing) toast(`저장 완료${plus} · 커밋할 변경 없음`);
+    else if (g.pushed) toast(`저장 · 커밋 · 푸시 완료${plus}`);
+    else toast(`저장 · 커밋 완료${plus}, 푸시 실패: ${g.error}`, true);
   } catch (err) {
     toast(err.message, true);
     btn.disabled = false;
@@ -404,6 +491,11 @@ async function doClockOut(e) {
 function renderTodos() {
   const ul = $('#todo-list');
   ul.innerHTML = '';
+  const extra = $('#todo-extra');
+  extra.innerHTML = '';
+  renderDoneList();
+  if (!S.active) return renderBacklog(ul, extra); // 출근 전 = 대기 목록 (끌어서 오늘로)
+  $('#todo-hint').hidden = true;
   const isPicked = (t) => !!S.active && S.active.picked.some((p) => sameTask(p, t.text));
   for (const t of S.todos.open) {
     ul.append(el('li', { class: isPicked(t) ? 'is-picked' : '' },
@@ -418,21 +510,25 @@ function renderTodos() {
     ));
   }
   if (!S.todos.open.length) ul.append(el('li', { class: 'muted' }, '할 일이 없습니다.'));
+}
 
+/** 완료 접힘 목록 (체크를 풀면 되돌리기) — 출근 전후 공통 */
+function renderDoneList() {
   const dl = $('#done-list');
   dl.innerHTML = '';
   for (const t of S.todos.done.slice(0, 15)) {
     dl.append(el('li', {}, el('label', {},
       el('input', { type: 'checkbox', checked: true, onchange: () => todo('undone', t.text) }),
-      taskLabel(t, t.noteDate),
+      taskLabel(t, { date: t.noteDate }),
     )));
   }
   $('#done-count').textContent = S.todos.done.length ? `(${S.todos.done.length})` : '';
 }
 
-async function todo(action, text) {
+/** 할 일 조작. extra = { status, note } (action 'status' 일 때) */
+async function todo(action, text, extra = {}) {
   try {
-    const r = await api('/api/todos', { action, text });
+    const r = await api('/api/todos', { action, text, ...extra });
     S = r.state;
     render();
   } catch (e) {
@@ -449,6 +545,26 @@ $('#todo-form').addEventListener('submit', async (e) => {
   await todo('add', text);
   input.focus();
 });
+
+// 출근 전: 왼쪽 "오늘" 칸의 카드를 오른쪽 카드 위에 놓으면 대기 목록으로 내려간다
+{
+  const card = $('#todo-card');
+  card.addEventListener('dragover', (e) => {
+    if (!drag || drag.from !== 'tray') return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    card.classList.add('over');
+  });
+  card.addEventListener('dragleave', (e) => { if (!card.contains(e.relatedTarget)) card.classList.remove('over'); });
+  card.addEventListener('drop', (e) => {
+    if (!drag || drag.from !== 'tray') return;
+    e.preventDefault();
+    card.classList.remove('over');
+    trayRemove(drag.text);
+    drag = null;
+    rerenderIdle();
+  });
+}
 
 // ── 통계 ──
 function computeStats() {

@@ -25,11 +25,13 @@
 
   <section class="card" id="todo-card">
     <h2>할 일</h2>
+    <p id="todo-hint" class="muted small-text" hidden></p>
     <form id="todo-form" class="row">
       <input id="todo-input" type="text" placeholder="새 할 일" autocomplete="off">
       <button type="submit" class="btn small">추가</button>
     </form>
     <ul id="todo-list" class="list"></ul>
+    <div id="todo-extra"></div>
     <details id="done-details">
       <summary>완료 <span id="done-count" class="muted"></span></summary>
       <ul id="done-list" class="list done"></ul>

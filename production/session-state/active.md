@@ -1,14 +1,16 @@
 # Session State — active
 
 > 재시작 시 자동 복구용(SessionStart 훅이 읽음). 최신 상태만 유지.
-> **Last Updated**: 2026-09-13 (오늘 = 출근부 작업만, 컨텍스트 클리어 후 재시작)
+> **Last Updated**: 2026-09-14 새벽 마감 (출근부 ver02: ⓪ 파서·M00-01 이어가기·출근 전 두 칸 드래그 완료 → 다음 M00-03)
 
-## ⭐ 오늘 (2026-09-13) — 출근부 ver02 작업, 클리어 후 여기서 시작
+## ⭐ 다음 세션 시작점 (2026-09-14 새벽 마감) — 출근부 ver02 진행 중, M00-03부터
 
-- **범위 (GPT 검토 반영, 순서 변경)**: **⓪ todo 파서 재작성 ✅ 완료(2026-09-13 — `tools/desk/todo.js` 신설, 단위 테스트 12개 `node --test tools/desk/test/todo.test.js`, 임시 폴더 스모크 22항목 통과, 미커밋)** → **M00-01 이어가기 ← 다음** → M00-03 퇴근 보고 3칸 → (남으면) M00-02 마일스톤 읽기·게이지·완료 동기화. 창 하나, "커밋 푸시" = 전부. ⓪에서 API `todos`가 문장 배열 → Task 객체 배열(`{id,status,marker,text,note,noteDate}`)로 바뀌었고 `/api/todos`에 `action:'status'`(+`status`,`note`)가 생겼다. 상태를 바꾸는 버튼·퇴근 폼은 아직 없음(M00-01·03에서).
-- **스펙 정본** = [tools/desk/brief-gpt-2026-09-13.md](../../tools/desk/brief-gpt-2026-09-13.md) **맨 끝 "GPT 답변 요약 + 결정" 절이 §6보다 우선.** 핵심 결정(2026-09-13): 상태 5개 `[ ] [/] [>] [x] [-]` + 메모는 **다음 줄** `  > 진행: … · 날짜`(← 화살표 방식 폐기) · 퇴근 폼 [완료|진행 중|보류] 기본 진행 중, 메모 전부 선택 · 자동 체크는 이어가기 **1개만** · 마일스톤 완료는 **앱이 쓴다**(todo `[M00-NN]` 완료 → 파일 `[x]`, git add 범위에 milestones 추가) · 데브로그 picked/done은 ID 우선 · 주간 회고 문항은 "막힌 것·다음 주 3가지" 둘(더 나은 형식 탐색 중). 브리프·이 파일은 아직 미커밋.
-- **진행 순서**: ① `tools/desk/server.js`(todo 읽기/쓰기, clockout)와 `public/app.js`(renderTodos·renderPickPanel·renderClockOutForm)를 읽고 "왜/어떻게" 설명 → 승인 → 수정 ② 테스트 = `DESK_DATA_DIR` 임시 폴더 + `--no-git` ③ 실제 서버는 `출근.bat`로 재시작 ④ 출근부 켜서 오늘 출근 찍기(오늘 할 일: M00-01 · M00-05 옵시디언 · M00-06 맥북 링크) ⑤ 끝나면 M00 백로그 체크 + "다음에 할 것" 초안.
-- **PM 루틴**: 세션 시작에 오늘 3개 추천 + 이유 / 세션 끝에 다음 할 것 초안 + 백로그 갱신. 결정 사항: 상태 5개(취소 포함), 기본값 진행 중, 이월 2회면 쪼개기, 퍼센트 없음.
+- **끝난 것 (커밋됨)**: ⓪ todo 파서 재작성(`tools/desk/todo.js` — 보존형·Task 객체·atomic write·BOM) → **M00-01 이어가기**(퇴근 "다음에 할 것" → todo.md, 출근 추천 순서 진행 중→어제 이어가기→열림→모름, 미리 1장, `state.pick`/`state.lastNext`, `todoMd.pickList`) → **출근 전 "오늘·대기" 두 칸 드래그**(brief Q10 앞 절반: 위치가 곧 상태, 오른쪽 서버 순서, 왼쪽 사용자 순서 → `picked` 순서, 고르기 패널 폐지, 빈 칸 260px). 검증 = 단위 15개(`node --test tools/desk/test/todo.test.js`) + 임시 폴더 스모크 33항목 + 헤드리스 Chrome 드래그 시뮬·스크린샷(`C:\Users\apple\Downloads\출근부-스크린샷-2026-09-14`). M00 진행 1/9. 서버 API: `todos`는 Task 객체 배열 `{id,status,marker,text,note,noteDate}`, `/api/todos`에 `status`(+`status`,`note`) 동작, `/api/clockout` 응답에 `added`.
+- **다음 세션 추천 3개** (이어가기 1 + 마일스톤 1 + 여유 1): ① **[M00-03] 퇴근 보고 3칸 + 항목별 [완료|진행 중|보류](기본 진행 중, 메모 전부 선택) + 그 주 마지막 퇴근이면 "다음 주 3개(클릭)"·"바꿀 것 하나" 칸 → `production/desk/weekly/YYYY-Www.md`** — 사용자가 직접 느낀 공백("중간까지 한 일 처리")이라 최우선. 스펙 = brief Q3·Q4·Q7·Q9 ② **[M00-05] 옵시디언 볼트 다시 열기**(S, 사용자 직접) ③ 여유 = [M00-06] 맥북 링크 결정 또는 콜로소 강의. todo.md에 M00-03 이미 추가됨. 그다음 = M00-02(마일스톤 카드·완료 동기화·주간 카드, Q2/Q9) → M00-09(출근 뒤 드래그·순서 저장·오른쪽 ⋯ 메뉴) → M00-04(today.md·훅) → M00-07(9/30 seasonStart) → M00-08.
+- **M00-03 작업 순서**: ① `server.js` `SECTIONS` = ['한 일','메모','다음에 할 것'](기존 "배운 것/막힌 것"은 모르는 섹션 보존 로직으로 유지) + clockout에 항목별 상태 반영(`todoMd.setStatus` doing/hold/done + note → todo.md, 데브로그 "한 일" `[완료]/[진행]/[보류] 본문 — 메모` 표기; `결정:` → decisions.md는 M00-08) ② `app.js` `renderClockOutForm` 3칸 + 항목별 세그먼트 버튼·메모 한 줄 ③ 그 주 마지막 퇴근 판정(금요일, 또는 config) + 주간 칸 → weekly 파일 ④ 테스트: 단위(`todo.test.js`) + 임시 폴더 스모크(스크래치패드 `smoke.js`·`shot.js`는 세션 임시 폴더라 사라짐 — 다시 작성, 패턴: `DESK_DATA_DIR`+`DESK_PORT=4199`+`--no-git --no-open`, 스크린샷은 Chrome `--headless=new --remote-debugging-port` + CDP WebSocket) ⑤ 서버 코드가 바뀌면 `출근부-끄기.bat` → `출근.bat`로 재시작(정적 파일만 바뀌면 새로고침으로 충분).
+- **스펙 정본** = [tools/desk/brief-gpt-2026-09-13.md](../../tools/desk/brief-gpt-2026-09-13.md) **맨 끝 "GPT 답변 요약 + 결정" 절(Q1~Q10)이 §6보다 우선.** 핵심: 상태 5개 `[ ] [/] [>] [x] [-]` + 다음 줄 메모 `  > 진행: … · 날짜` · 퇴근 폼 기본 진행 중, 메모 전부 선택 · 미리 1장 · 마일스톤 완료는 앱이 씀(git add 범위에 milestones) · picked/done 비교는 id 우선 · 주간 = 금요일 퇴근 폼 확장 + 아침 "이번 주" 카드 · 위치가 곧 상태(칸 둘뿐, 칸반 금지).
+- **PM 루틴**: 세션 시작에 오늘 3개 추천 + 이유 / 세션 끝에 다음 할 것 초안 + M00-prep 백로그 체크(Claude가 세션 끝에). 결정 사항: 상태 5개(취소 포함), 기본값 진행 중, 이월 2회면 쪼개기, 퍼센트 없음. 창 하나, "커밋 푸시" = 전부.
+- **주의**: 실제 todo.md에 사용자가 시험 중 넣은 `test` 항목이 있음(× 로 지워도 됨). 9/14 새벽 시험 중 M00-02가 완료로 잘못 체크된 것은 되돌려 둠. 출근부 서버는 켜 둔 상태(포트 4123).
 
 ## 이전 시작점 (2026-09-12 기록)
 
@@ -22,7 +24,7 @@
 
 다음에 할 일 (우선순위):
 
-1. **출근부 ver02 첫 묶음** — [tools/desk/ROADMAP.md](../../tools/desk/ROADMAP.md) "첫 묶음" 1번부터 (퇴근 보고 3칸 → 커밋 요약 → 다음 할 일 이어가기 → …).
+1. **출근부 ver02** — [M00-prep](../milestones/M00-prep.md) 백로그 순서대로: 03 퇴근 보고 3칸 → 02 마일스톤 카드·동기화·주간 카드 → 09 출근 뒤 드래그·⋯ 메뉴 → 04 today.md·훅 → 07 seasonStart → 08 커밋 요약·결정 원장. (ROADMAP.md "첫 묶음" 번호는 옛 순서 — M00-prep가 정본)
 2. **10월 1일 새 시즌** (`tools/desk/desk.config.json` seasonStart → 2026-10-01) — 첫 마일스톤 = **GDD v1 확정**: `design/concept/`의 mvp-design·interview_idea를 `/design-system`으로 `design/gdd/`에 승격. 마일스톤·주간 계획 파일 형식은 그때 확정 (ROADMAP 두 번째 묶음).
 3. **game/ 착수 (GDD v1 뒤)** — Unity Hub로 `game/` 생성 (Location `C:\DungeonHR`, Project name `game`) + `game/CLAUDE.md` → 구현 순서 초안 [design/concept/build-roadmap.md](../../design/concept/build-roadmap.md).
 
