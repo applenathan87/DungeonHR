@@ -178,7 +178,7 @@ h1 { font-size: 30px; margin-top: 2px; }
 .list label { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; min-width: 0; }
 .list label span { overflow-wrap: anywhere; }
 .list input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex: none; }
-.list li.is-done label .t, .list.done label .t { color: var(--muted); text-decoration: line-through; }
+.list li.is-done .t, .list.done .t { color: var(--muted); text-decoration: line-through; }
 .list li.is-picked label .t::after { content: " · 오늘"; color: var(--accent); font-size: 12px; }
 /* 할 일 한 줄 = 본문(.t) + 상태 표식(.tag) + 메모(.note) */
 .list .txt { flex: 1; min-width: 0; }
@@ -389,3 +389,14 @@ textarea { resize: vertical; min-height: 64px; }
 .list li.dragging { opacity: 0.45; }
 .grip { color: var(--muted); font-size: 12px; letter-spacing: -3px; user-select: none; flex: none; padding-right: 4px; }
 #todo-card.over { outline: 1px dashed var(--accent); outline-offset: -6px; }
+
+/* ── 출근 뒤 오늘 할 일: 줄마다 [완료 | 진행 중 | 내일로] ── */
+.list.picked li.today-row { flex-wrap: wrap; }
+.seg { display: inline-flex; flex: none; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg .seg-btn { background: transparent; border: 0; border-left: 1px solid var(--line); color: var(--muted); padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer; white-space: nowrap; }
+.seg .seg-btn:first-child { border-left: 0; }
+.seg .seg-btn:hover { color: var(--ink); background: var(--card-2); }
+.seg .seg-btn.on.done { background: var(--good); color: #10200f; }
+.seg .seg-btn.on.doing { background: var(--accent); color: var(--accent-ink); }
+.seg .seg-btn.on.open { background: var(--ink-2); color: var(--bg); }
+input.note-input { flex-basis: 100%; margin: 6px 0 2px; font-size: 13px; padding: 7px 10px; }

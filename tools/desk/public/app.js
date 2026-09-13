@@ -363,21 +363,53 @@ async function doBack() {
   }
 }
 
+/**
+ * 출근 뒤 왼쪽 "오늘 할 일". 줄마다 [완료 | 진행 중 | 내일로] — 누르는 즉시 todo.md 에 저장된다 (퇴근은 확인 도장일 뿐).
+ *   완료   → [x] + 데브로그 done
+ *   진행 중 → [/] + "어디까지" 한 줄(선택)
+ *   내일로 → 열림 그대로 (진행 메모가 있었으면 메모 줄로 보존) → 내일 아침 "어제 이어가기"
+ * 기본값은 현재 상태(열림=내일로, 진행 중=진행 중)라서 완료만 직접 누르면 된다 — 손 안 댄 항목이 진행 중으로 남지 않는다.
+ */
+let focusNote = null; // 방금 "진행 중"을 고른 항목 — 다시 그린 뒤 메모 칸에 커서를 둔다
 function renderPickedList() {
   const ul = el('ul', { class: 'list picked' });
   for (const text of S.active.picked) {
     const isDone = S.active.done.some((d) => sameTask(d, text));
-    const info = S.todos.open.find((x) => sameTask(x.text, text)) || { status: isDone ? 'done' : 'open', text, note: '' };
-    ul.append(el('li', { class: isDone ? 'is-done' : '' },
-      el('label', {},
-        el('input', { type: 'checkbox', checked: isDone, onchange: () => todo(isDone ? 'undone' : 'done', text) }),
-        taskLabel({ ...info, text }),
+    const info = S.todos.open.find((x) => sameTask(x.text, text)) || S.todos.done.find((x) => sameTask(x.text, text)) || { status: 'open', text, note: '' };
+    const status = isDone || info.status === 'done' ? 'done' : info.status === 'doing' ? 'doing' : 'open';
+    const seg = (label, value, title) => el('button', {
+      type: 'button', class: `seg-btn${status === value ? ` on ${value}` : ''}`, 'data-status': value, title,
+      onclick: () => setToday(text, value, info),
+    }, label);
+    const li = el('li', { class: `today-row${status === 'done' ? ' is-done' : ''}` },
+      taskLabel({ ...info, text, note: status === 'doing' ? '' : info.note }), // 진행 중이면 메모는 아래 입력칸에
+      el('div', { class: 'seg' },
+        seg('완료', 'done', '끝냈다'),
+        seg('진행 중', 'doing', '손은 댔는데 안 끝났다 — 어디까지 했는지 한 줄'),
+        seg('내일로', 'open', '오늘 못 했다 — 내일 아침 이어가기로 올라온다'),
       ),
       el('button', { class: 'icon-btn', title: '오늘 목록에서 빼기', onclick: () => todo('unpick', text) }, '−'),
-    ));
+    );
+    if (status === 'doing') {
+      const input = el('input', {
+        type: 'text', class: 'note-input', value: info.note || '', placeholder: '어디까지 했나요? (선택) — Enter 로 저장',
+        onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } },
+        onchange: (e) => todo('status', text, { status: 'doing', note: e.target.value.trim() }),
+      });
+      li.append(input);
+      if (focusNote && sameTask(focusNote, text)) { focusNote = null; setTimeout(() => input.focus(), 0); }
+    }
+    ul.append(li);
   }
   if (!S.active.picked.length) ul.append(el('li', { class: 'muted' }, '오늘 고른 할 일이 없습니다.'));
   return ul;
+}
+
+/** [완료 | 진행 중 | 내일로] 누름. 내일로는 열림으로 되돌리되 진행 메모는 버리지 않는다(메모 줄로 남음) */
+function setToday(text, value, info) {
+  if (value === 'done') return todo('done', text);
+  if (value === 'doing') { focusNote = text; return todo('status', text, { status: 'doing', note: info.note || '' }); }
+  return todo('status', text, { status: 'open', note: info.status === 'doing' ? info.note : '' });
 }
 
 function renderAddToToday() {
