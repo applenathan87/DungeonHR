@@ -178,7 +178,7 @@ h1 { font-size: 30px; margin-top: 2px; }
 .list label { display: flex; align-items: center; gap: 10px; cursor: pointer; flex: 1; min-width: 0; }
 .list label span { overflow-wrap: anywhere; }
 .list input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; flex: none; }
-.list li.is-done .t, .list.done .t { color: var(--muted); text-decoration: line-through; }
+.list li.is-done .t, .list.done .t { color: var(--muted); } /* 삭선 없음 — 가시성 (2026-09-15) */
 .list li.is-picked label .t::after { content: " · 오늘"; color: var(--accent); font-size: 12px; }
 /* 할 일 한 줄 = 본문(.t) + 상태 표식(.tag) + 메모(.note) */
 .list .txt { flex: 1; min-width: 0; }
@@ -281,32 +281,39 @@ textarea { resize: vertical; min-height: 64px; }
 .h-date { color: var(--ink-2); font-variant-numeric: tabular-nums; flex: none; width: 112px; }
 .h-hours { color: var(--accent); flex: none; width: 56px; font-variant-numeric: tabular-nums; }
 .h-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.list.history li { padding: 0; }
+.list.history li { padding: 0; flex-wrap: wrap; }
+.history-item.open { background: var(--card-2); }
 
-/* ── 모달 ── */
-.modal { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; }
-.modal-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.6); }
-.modal-panel {
-  position: relative;
-  width: min(760px, 92vw);
-  max-height: 86vh;
-  overflow: auto;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 26px 30px;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
-}
-.modal-close { position: absolute; top: 10px; right: 12px; border: none; background: transparent; color: var(--muted); font-size: 26px; cursor: pointer; }
-.modal-close:hover { color: var(--ink); }
-.modal-meta { font-size: 13px; }
-.modal-title { font-size: 22px; margin: 4px 0 14px; }
-.md h2 { font-size: 16px; color: var(--accent); margin: 18px 0 6px; }
-.md h3 { font-size: 15px; margin: 14px 0 4px; }
-.md ul { list-style: disc; padding-left: 20px; margin-bottom: 8px; }
-.md li { margin: 2px 0; }
-.md code { background: #14100e; padding: 1px 5px; border-radius: 4px; font-size: 13px; }
-.md a { color: var(--accent); }
+/* ── 지난 날 카드 (줄 아래 펼침 — 퇴근 완료 카드와 같은 모양) ── */
+.day-card { flex-basis: 100%; margin: 2px 4px 12px; padding: 12px 14px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--card-2); }
+.day-section { margin-top: 10px; }
+.day-section-title { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.day-card .list.report li { padding: 5px 2px; }
+.report-row.plain .report-icon { color: var(--muted); }
+.day-path { margin-top: 10px; }
+
+/* ── 주 · 월 기록 보기 ── */
+.seg .seg-btn.on { background: var(--ink-2); color: var(--bg); }
+#history-mode .seg-btn { padding: 4px 12px; }
+.h-date.wide { width: 150px; }
+.h-pomo { color: var(--muted); flex: none; width: 44px; font-size: 12px; }
+.history-item.sub { padding: 4px 4px; font-size: 14px; }
+.sub-list { margin: 6px 0 4px; }
+.sub-list li { padding: 0; }
+.period-card .day-section { margin-top: 12px; }
+.bars { width: 100%; height: auto; display: block; margin: 10px 0 2px; }
+.bars .grid { stroke: var(--line); stroke-width: 1; }
+.bars .axis { stroke: rgba(255, 255, 255, 0.18); stroke-width: 1; }
+.bars .tick { fill: var(--muted); font-size: 11px; }
+.bars .val { fill: var(--ink-2); font-size: 11px; }
+.bars .bar-hours { fill: #9a7a48; }                                 /* 근무 시간 — 어두운 배경 대비 3:1 이상 (검증 스크립트 통과) */
+.bars .bar-focus { fill: var(--accent); stroke: var(--card-2); stroke-width: 2; } /* 그중 집중 — 겹친 막대에 2px 표면 테두리 */
+.bars .hit { fill: transparent; }
+.bars .bar-g:hover .bar-hours { fill: #b3945f; }
+.legend-bars { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin: 2px 0 6px 34px; }
+.legend-bars i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.legend-bars .sw-hours { background: #9a7a48; }
+.legend-bars .sw-focus { background: var(--accent); }
 
 /* ── 도장 ── */
 .stamp { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; pointer-events: none; --stamp-color: var(--danger); --stamp-dur: 1500ms; }
@@ -400,3 +407,13 @@ textarea { resize: vertical; min-height: 64px; }
 .seg .seg-btn.on.doing { background: var(--accent); color: var(--accent-ink); }
 .seg .seg-btn.on.open { background: var(--ink-2); color: var(--bg); }
 input.note-input { flex-basis: 100%; margin: 6px 0 2px; font-size: 13px; padding: 7px 10px; }
+
+/* ── 오늘 결과표 (퇴근 뒤 카드) ── */
+.report-wrap { margin-top: 14px; }
+.list.report li { gap: 10px; }
+.report-icon { flex: none; width: 20px; text-align: center; font-weight: 700; }
+.report-row.done .report-icon { color: var(--good); }
+.report-row.done .t { color: var(--muted); }
+.report-row.doing .report-icon { color: var(--accent); }
+.report-row.planned .report-icon { color: var(--ink-2); }
+.clockout .list.picked { margin-bottom: 6px; }

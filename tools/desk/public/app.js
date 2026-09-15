@@ -188,29 +188,30 @@ function renderWork() {
         away
           ? el('button', { class: 'btn primary big', onclick: doBack }, '복귀')
           : el('button', { class: 'btn big', onclick: doAway }, '부재'),
-        el('button', { class: `btn big${away ? '' : ' primary'}`, onclick: () => { view = 'clockout'; renderWork(); } }, '퇴근'),
+        el('button', { class: `btn big${away ? '' : ' primary'}`, onclick: () => { draft = null; view = 'clockout'; renderWork(); } }, '퇴근'),
       ),
     );
     return;
   }
 
-  // 출근 전: 왼쪽 카드가 곧 "오늘" 칸. 오른쪽 대기 목록에서 카드를 끌어(또는 "오늘로") 올려 두고 출근 도장을 찍는다.
-  // 위치가 곧 상태 — 왼쪽에 있으면 오늘 할 일, 오른쪽에 있으면 대기. 고르기용 체크박스는 없다.
-  syncTray();
+  // 퇴근 뒤: 왼쪽 카드 = 오늘 결과표 (완료·진행 중·예정). 같은 날 "다시 출근"은 오늘 고른 항목을 그대로 이어간다 (대기 칸 없음).
   if (S.todayDay) {
     c.append(
       el('span', { class: 'status-badge closed' }, '퇴근 완료'),
       el('h2', {}, `Day ${S.todayDay.day} — ${S.todayDay.summary}`),
-      el('p', { class: 'muted' }, `오늘 ${fmtHours(S.todayDay.hours)} · ${S.todayDay.sessions.join(', ')}`),
-      renderTray(),
+      el('p', { class: 'muted' }, `오늘 ${fmtHours(S.todayDay.hours)} · ${S.todayDay.sessions.join(', ')}${S.todayDay.pomodoros ? ` · 뽀모도로 ${S.todayDay.pomodoros}개` : ''}`),
+      renderDayReport(),
       el('div', { class: 'actions' },
-        el('button', { class: 'btn', onclick: () => openDevlog(S.today) }, '오늘 일지 보기'),
+        el('button', { class: 'btn', onclick: () => showDay(S.today) }, '오늘 일지 보기'),
         el('button', { class: 'btn primary big', onclick: doClockIn }, '다시 출근'),
       ),
     );
     return;
   }
 
+  // 출근 전(새 날): 왼쪽 카드가 곧 "오늘" 칸. 오른쪽 대기 목록에서 카드를 끌어(또는 "추가") 올려 두고 출근 도장을 찍는다.
+  // 위치가 곧 상태 — 왼쪽에 있으면 오늘 할 일, 오른쪽에 있으면 대기. 고르기용 체크박스는 없다.
+  syncTray();
   c.append(
     el('span', { class: 'status-badge idle' }, '퇴근 상태'),
     el('h2', {}, `Day ${S.nextDayNumber}을 시작할까요?`),
@@ -295,19 +296,19 @@ function renderTray() {
   );
 }
 
-/** 출근 전 오른쪽 = 대기 목록 (서버 순서). 끌거나 "오늘로"로 왼쪽에 올린다. 완료 체크는 여기 없다 — 실수로 완료되는 걸 막는다 */
+/** 출근 전 오른쪽 = 대기 목록 (서버 순서). 끌거나 "추가"로 왼쪽에 올린다. 완료 체크는 여기 없다 — 실수로 완료되는 걸 막는다 */
 function renderBacklog(ul, extra) {
   syncTray();
   const pick = S.pick;
-  $('#todo-hint').textContent = '왼쪽 "오늘 할 일"로 끌어 올리거나 "오늘로"를 누르세요. 순서는 진행 중 → 어제 이어가기 → 열림.';
+  $('#todo-hint').textContent = '왼쪽 "오늘 할 일"로 끌어 올리거나 "추가"를 누르세요. 순서는 진행 중 → 어제 이어가기 → 열림.';
   $('#todo-hint').hidden = false;
   const rest = backlogItems();
   for (const t of rest) {
     ul.append(el('li', { draggable: 'true', 'data-text': t.text, ondragstart: (e) => startDrag(e, t.text, 'backlog'), ondragend: endDrag },
-      el('span', { class: 'grip', title: '끌어서 오늘로' }, '⋮⋮'),
+      el('span', { class: 'grip', title: '끌어서 오늘 할 일로' }, '⋮⋮'),
       taskLabel(t, { tags: nextTag(t) }),
       el('span', { class: 'li-actions' },
-        el('button', { class: 'btn small', onclick: () => { trayInsert(t.text, tray.length); rerenderIdle(); } }, '오늘로'),
+        el('button', { class: 'btn small', title: '오늘 할 일에 추가', onclick: () => { trayInsert(t.text, tray.length); rerenderIdle(); } }, '추가'),
         el('button', { class: 'icon-btn danger', title: '삭제', onclick: () => confirm(`삭제할까요?\n${t.text}`) && todo('remove', t.text) }, '×'),
       ),
     ));
@@ -364,11 +365,11 @@ async function doBack() {
 }
 
 /**
- * 출근 뒤 왼쪽 "오늘 할 일". 줄마다 [완료 | 진행 중 | 내일로] — 누르는 즉시 todo.md 에 저장된다 (퇴근은 확인 도장일 뿐).
+ * 출근 뒤 왼쪽 "오늘 할 일". 줄마다 [완료 | 진행 중 | 예정] — 누르는 즉시 todo.md 에 저장된다 (퇴근은 확인 도장일 뿐).
  *   완료   → [x] + 데브로그 done
  *   진행 중 → [/] + "어디까지" 한 줄(선택)
- *   내일로 → 열림 그대로 (진행 메모가 있었으면 메모 줄로 보존) → 내일 아침 "어제 이어가기"
- * 기본값은 현재 상태(열림=내일로, 진행 중=진행 중)라서 완료만 직접 누르면 된다 — 손 안 댄 항목이 진행 중으로 남지 않는다.
+ *   예정   → 열림 그대로 (진행 메모가 있었으면 메모 줄로 보존) → 내일 아침 "어제 이어가기"
+ * 기본값은 현재 상태(열림=예정, 진행 중=진행 중)라서 완료만 직접 누르면 된다 — 손 안 댄 항목이 진행 중으로 남지 않는다.
  */
 let focusNote = null; // 방금 "진행 중"을 고른 항목 — 다시 그린 뒤 메모 칸에 커서를 둔다
 function renderPickedList() {
@@ -386,7 +387,7 @@ function renderPickedList() {
       el('div', { class: 'seg' },
         seg('완료', 'done', '끝냈다'),
         seg('진행 중', 'doing', '손은 댔는데 안 끝났다 — 어디까지 했는지 한 줄'),
-        seg('내일로', 'open', '오늘 못 했다 — 내일 아침 이어가기로 올라온다'),
+        seg('예정', 'open', '오늘 손 안 댐 — 내일 아침 이어가기로 올라온다'),
       ),
       el('button', { class: 'icon-btn', title: '오늘 목록에서 빼기', onclick: () => todo('unpick', text) }, '−'),
     );
@@ -405,7 +406,29 @@ function renderPickedList() {
   return ul;
 }
 
-/** [완료 | 진행 중 | 내일로] 누름. 내일로는 열림으로 되돌리되 진행 메모는 버리지 않는다(메모 줄로 남음) */
+/** 오늘 결과표 (근무 중·퇴근 뒤·퇴근 보고 공통) — 서버 state.report 를 그린다 */
+function renderDayReport() {
+  const r = S.report || { done: [], doing: [], planned: [] };
+  const total = r.done.length + r.doing.length + r.planned.length;
+  const row = (icon, cls, x, extra) => el('li', { class: `report-row ${cls}` },
+    el('span', { class: 'report-icon' }, icon),
+    el('span', { class: 'txt' }, el('span', { class: 't' }, x.text), extra || null),
+  );
+  const ul = el('ul', { class: 'list report' });
+  for (const x of r.done) ul.append(row('✓', 'done', x));
+  for (const x of r.doing) ul.append(row('◐', 'doing', x, x.note ? el('div', { class: 'note' }, x.note) : null));
+  for (const x of r.planned) ul.append(row('→', 'planned', x, el('div', { class: 'note' }, '내일 아침 이어가기로 올라옵니다')));
+  if (!total) ul.append(el('li', { class: 'muted' }, '오늘 고른 할 일이 없었습니다.'));
+  return el('div', { class: 'report-wrap' },
+    el('div', { class: 'tray-head' },
+      el('span', { class: 'field-label' }, '오늘 결과'),
+      el('span', { class: 'muted small-text' }, `완료 ${r.done.length} · 진행 중 ${r.doing.length} · 예정 ${r.planned.length}`),
+    ),
+    ul,
+  );
+}
+
+/** [완료 | 진행 중 | 예정] 누름. 예정은 열림으로 되돌리되 진행 메모는 버리지 않는다(메모 줄로 남음) */
 function setToday(text, value, info) {
   if (value === 'done') return todo('done', text);
   if (value === 'doing') { focusNote = text; return todo('status', text, { status: 'doing', note: info.note || '' }); }
@@ -417,7 +440,7 @@ function renderAddToToday() {
   const det = el('details', { class: 'add-today' }, el('summary', {}, `오늘 할 일에 추가 (${rest.length})`));
   const ul = el('ul', { class: 'list' });
   for (const t of rest) {
-    ul.append(el('li', {}, taskLabel(t), el('button', { class: 'btn small', onclick: () => todo('pick', t.text) }, '오늘로')));
+    ul.append(el('li', {}, taskLabel(t), el('button', { class: 'btn small', title: '오늘 할 일에 추가', onclick: () => todo('pick', t.text) }, '추가')));
   }
   if (!rest.length) ul.append(el('li', { class: 'muted' }, '남은 할 일이 없습니다.'));
   det.append(ul);
@@ -462,38 +485,52 @@ function renderPomodoro() {
 const field = (label, input) => el('label', { class: 'field' }, el('span', { class: 'field-label' }, label), input);
 const textarea = (name, value) => el('textarea', { name, rows: 3, value, placeholder: '줄마다 하나씩' });
 
+/**
+ * 퇴근 보고 3칸(제목·메모·다음에 할 것). "한 일"은 위 오늘 목록의 상태로 자동 작성되므로 칸이 없다.
+ * 폼 위에 오늘 목록을 그대로 보여 주고(같은 [완료|진행 중|예정] 버튼 — 여기서 바꿔도 즉시 저장), 그 아래 3칸.
+ * 상태 버튼을 누르면 화면이 다시 그려지므로 쓰던 글은 draft 에 보관했다가 되살린다.
+ */
+let draft = null; // { title, memo, next } — 퇴근 폼에 쓰던 글
 function renderClockOutForm(c) {
   const d = S.active;
+  const r = S.report || { done: [], doing: [], planned: [] };
+  const auto = [...r.doing, ...r.planned].map((x) => x.text);
+  const typedNext = d.next.filter((l) => !auto.some((a) => sameTask(a, l))); // 자동 줄(진행 중·예정)은 빼고 사람이 적은 것만 미리 채움
+  if (!draft) draft = { title: d.summary || '', memo: d.memo.join('\n'), next: typedNext.join('\n') };
+  const keep = (name) => (e) => { draft[name] = e.target.value; };
   const f = el('form', { class: 'clockout', onsubmit: doClockOut });
   f.append(
     el('h2', {}, `Day ${d.day} 퇴근 보고`),
-    field('오늘을 한 줄로 (필수)', el('input', { name: 'title', type: 'text', required: true, value: d.summary || '', placeholder: '예: 출근부 v1 완성, 첫 퇴근' })),
-    field('한 일', textarea('did', uniq([...d.did, ...d.done]).join('\n'))),
-    field('배운 것', textarea('learned', d.learned.join('\n'))),
-    field('막힌 것', textarea('blocked', d.blocked.join('\n'))),
-    field('다음에 할 것', textarea('next', d.next.join('\n'))),
-    el('p', { class: 'muted small-text' },
-      '줄마다 하나씩 적으면 목록으로 저장됩니다.' + (S.config.autoPush ? ' 퇴근하면 데이터 폴더만 커밋·푸시됩니다.' : ''),
+    el('div', { class: 'tray-head' },
+      el('span', { class: 'field-label' }, '오늘 할 일 — 상태를 확인하세요'),
+      el('span', { class: 'muted small-text' }, `완료 ${r.done.length} · 진행 중 ${r.doing.length} · 예정 ${r.planned.length}`),
     ),
+    renderPickedList(),
+    el('p', { class: 'muted small-text' }, '"한 일"은 위 상태로 자동 작성됩니다. 진행 중·예정 항목은 "다음에 할 것"에 자동으로 들어가 내일 아침 이어가기로 올라옵니다.'),
+    field('오늘을 한 줄로 (필수)', el('input', { name: 'title', type: 'text', required: true, value: draft.title, placeholder: '예: 출근부 v1 완성, 첫 퇴근', oninput: keep('title') })),
+    field('메모 (선택)', el('textarea', { name: 'memo', rows: 3, value: draft.memo, placeholder: '줄마다 하나씩. "결정:"으로 시작하면 나중에 결정 원장에도 남습니다', oninput: keep('memo') })),
+    field('다음에 할 것 (선택) — 새로 떠오른 것만', el('textarea', { name: 'next', rows: 2, value: draft.next, placeholder: '줄마다 하나씩 → 할 일 목록에 새 항목으로 들어갑니다', oninput: keep('next') })),
+    el('p', { class: 'muted small-text' }, S.config.autoPush ? '퇴근하면 데이터 폴더만 커밋·푸시됩니다.' : ''),
     el('div', { class: 'actions' },
-      el('button', { type: 'button', class: 'btn', onclick: () => { view = 'idle'; renderWork(); } }, '취소'),
+      el('button', { type: 'button', class: 'btn', onclick: () => { draft = null; view = 'idle'; renderWork(); } }, '취소'),
       el('button', { type: 'submit', class: 'btn primary big' }, '퇴근 도장 찍기'),
     ),
   );
   c.append(f);
-  f.querySelector('input[name=title]').focus();
+  if (!draft.title) f.querySelector('input[name=title]').focus();
 }
 
 async function doClockOut(e) {
   e.preventDefault();
   const fd = new FormData(e.target);
-  const body = Object.fromEntries(['title', 'did', 'learned', 'blocked', 'next'].map((k) => [k, fd.get(k) || '']));
+  const body = Object.fromEntries(['title', 'memo', 'next'].map((k) => [k, fd.get(k) || '']));
   const btn = e.target.querySelector('button[type=submit]');
   btn.disabled = true;
   btn.textContent = '저장 중…';
   try {
     const r = await api('/api/clockout', body);
     view = 'idle';
+    draft = null;
     S = r.state;
     tray = null; // 다음 출근의 "오늘" 칸은 새 추천으로 다시 시작
     updateTitle();
@@ -526,7 +563,7 @@ function renderTodos() {
   const extra = $('#todo-extra');
   extra.innerHTML = '';
   renderDoneList();
-  if (!S.active) return renderBacklog(ul, extra); // 출근 전 = 대기 목록 (끌어서 오늘로)
+  if (!S.active && !S.todayDay) return renderBacklog(ul, extra); // 새 날 출근 전 = 대기 목록 (끌어서 추가)
   $('#todo-hint').hidden = true;
   const isPicked = (t) => !!S.active && S.active.picked.some((p) => sameTask(p, t.text));
   for (const t of S.todos.open) {
@@ -728,9 +765,12 @@ function tooltipHtml(ds) {
 }
 
 function showTooltip(target) {
-  const ds = target.dataset.date;
+  tip(target, tooltipHtml(target.dataset.date));
+}
+/** 아무 요소 위에 툴팁 (히트맵 칸, 막대 그래프 공용) */
+function tip(target, html) {
   const tt = $('#tooltip');
-  tt.innerHTML = tooltipHtml(ds);
+  tt.innerHTML = html;
   tt.hidden = false;
   const r = target.getBoundingClientRect();
   const pad = 8;
@@ -748,78 +788,206 @@ heat.addEventListener('pointerover', (e) => { const c = e.target.closest('.hm-ce
 heat.addEventListener('pointerout', (e) => { if (e.target.closest('.hm-cell')) hideTooltip(); });
 heat.addEventListener('focusin', (e) => { const c = e.target.closest('.hm-cell'); if (c && c.dataset.date) showTooltip(c); });
 heat.addEventListener('focusout', hideTooltip);
-heat.addEventListener('click', (e) => { const c = e.target.closest('.hm-cell'); if (c && heatIndex[c.dataset.date]) openDevlog(c.dataset.date); });
-heat.addEventListener('keydown', (e) => { const c = e.target.closest('.hm-cell'); if (c && e.key === 'Enter' && heatIndex[c.dataset.date]) openDevlog(c.dataset.date); });
+heat.addEventListener('click', (e) => { const c = e.target.closest('.hm-cell'); if (c && heatIndex[c.dataset.date]) showDay(c.dataset.date); });
+heat.addEventListener('keydown', (e) => { const c = e.target.closest('.hm-cell'); if (c && e.key === 'Enter' && heatIndex[c.dataset.date]) showDay(c.dataset.date); });
 $('.heatmap-wrap').addEventListener('scroll', hideTooltip);
 let resizeTimer = null;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { if (S) renderHeatmap(); }, 150); });
 
-// ── 지난 데브로그 ──
+// ── 지난 데브로그: [일 | 주 | 월] 기록 보기 (줄을 누르면 그 자리에서 카드로 펼쳐진다 — 모달 없음, 2026-09-15) ──
+// 주·월 숫자는 서버(stats.js)가 한 번 계산한 state.periods 를 그대로 그린다 — 회고 통계·today.md 와 같은 숫자.
+let histMode = 'day';     // 'day' | 'week' | 'month'
+let openedDay = null;     // 일 보기에서 펼친 날짜
+let openedPeriod = null;  // 주/월 보기에서 펼친 key ('2026-W38' / '2026-09')
+
+const reportRow = (icon, cls, text, note) => el('li', { class: `report-row ${cls}` },
+  el('span', { class: 'report-icon' }, icon),
+  el('span', { class: 'txt' }, el('span', { class: 't' }, text), note ? el('div', { class: 'note' }, note) : null),
+);
+const section = (title, rows) => (rows.length ? el('div', { class: 'day-section' }, el('div', { class: 'day-section-title' }, title), el('ul', { class: 'list report' }, rows)) : null);
+const mdShort = (s) => `${Number(s.slice(5, 7))}/${Number(s.slice(8, 10))}`;
+
 function renderHistory() {
+  const box = $('#history-mode');
+  box.innerHTML = '';
+  for (const [m, label] of [['day', '일'], ['week', '주'], ['month', '월']]) {
+    box.append(el('button', { type: 'button', class: `seg-btn${histMode === m ? ' on' : ''}`, onclick: () => { histMode = m; renderHistory(); } }, label));
+  }
   const ul = $('#history-list');
   ul.innerHTML = '';
+  const periods = S.periods || { weeks: [], months: [] };
+  if (histMode === 'week') return renderPeriods(ul, periods.weeks, 'week');
+  if (histMode === 'month') return renderPeriods(ul, periods.months, 'month');
+
   const days = [...S.days].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 40);
   for (const d of days) {
-    ul.append(el('li', {},
-      el('button', { class: 'history-item', onclick: () => openDevlog(d.date) },
+    const open = openedDay === d.date;
+    const li = el('li', { 'data-date': d.date },
+      el('button', { class: `history-item${open ? ' open' : ''}`, onclick: () => toggleDay(d.date) },
         el('span', { class: 'h-date' }, `${d.date.slice(0, 4) === S.today.slice(0, 4) ? d.date.slice(5) : d.date} (${WEEKDAYS[parseDate(d.date).getDay()]})`),
         el('span', { class: 'pill small' }, `Day ${d.day}`),
         el('span', { class: 'h-hours' }, d.status === 'open' ? '출근 중' : d.status === 'away' ? '부재 중' : fmtHours(d.hours)),
         el('span', { class: 'h-title' }, d.summary || '(퇴근 전)'),
       ),
-    ));
+    );
+    if (open) li.append(renderDayCard(d));
+    ul.append(li);
   }
   if (!days.length) ul.append(el('li', { class: 'muted' }, '아직 데브로그가 없습니다. 첫 출근을 해보세요.'));
 }
 
-// ── 데브로그 보기 (모달) ──
-async function openDevlog(date) {
-  try {
-    const { text } = await api(`/api/devlog/${date}`);
-    const d = heatIndex[date] || S.days.find((x) => x.date === date);
-    const body = $('#modal-body');
-    body.innerHTML = '';
-    body.append(
-      el('div', { class: 'modal-meta muted' }, `${date.slice(0, 4)}년 ${fmtDate(date)}${d ? ` · Day ${d.day} · ${fmtHours(d.hours)} · ${d.sessions.join(', ')}` : ''}`),
-      el('h2', { class: 'modal-title' }, d ? d.title : date),
-    );
-    const content = el('div', { class: 'md' });
-    content.innerHTML = renderMarkdown(text);
-    body.append(content, el('p', { class: 'muted small-text' }, `파일: production/desk/devlog/${date}.md`));
-    $('#modal').hidden = false;
-  } catch (e) {
-    toast(e.message, true);
-  }
+/** 줄 클릭: 펼치기/접기 */
+function toggleDay(date) {
+  openedDay = openedDay === date ? null : date;
+  renderHistory();
+}
+/** 히트맵·"오늘 일지 보기"·주 카드의 날짜 줄에서: 일 보기로 바꿔 펼치고 그 자리로 스크롤 */
+function showDay(date) {
+  histMode = 'day';
+  openedDay = date;
+  renderHistory();
+  const li = $(`#history-list li[data-date="${date}"]`);
+  if (li) li.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
-$('#modal').addEventListener('click', (e) => { if (e.target.closest('[data-close]')) $('#modal').hidden = true; });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('#modal').hidden = true; });
+/**
+ * 그날의 데브로그를 카드로: 시간 · "한 일"([완료]/[진행] 표기 → ✓/◐) · 메모 · 다음에 할 것. 빈 절은 안 보인다.
+ * 지난 날의 결과는 그날 파일에 적힌 대로 그린다 (오늘의 할 일 상태는 시간이 지나면 바뀌므로).
+ */
+function renderDayCard(d) {
+  const when = d.status === 'open' ? '출근 중' : d.status === 'away' ? '부재 중' : fmtHours(d.hours);
+  const meta = `${d.date.slice(0, 4)}년 ${fmtDate(d.date)} · Day ${d.day} · ${when}${d.sessions.length ? ' · ' + d.sessions.join(', ') : ''}${d.pomodoros ? ` · 뽀모도로 ${d.pomodoros}개` : ''}`;
+  const didRow = (line) => {
+    const m = /^\[(완료|진행)\]\s*(.*)$/.exec(line);
+    if (!m) return reportRow('•', 'plain', line, '');            // ver01 줄 (표기 없음)
+    const [text, note = ''] = m[2].split(/\s+—\s+/);
+    return m[1] === '완료' ? reportRow('✓', 'done', text, note) : reportRow('◐', 'doing', text, note);
+  };
+  const empty = !d.did.length && !d.memo.length && !d.next.length;
+  return el('div', { class: 'day-card' },
+    el('div', { class: 'muted small-text' }, meta),
+    section('한 일', d.did.map(didRow)),
+    section('메모', d.memo.map((t) => reportRow('•', 'plain', t, ''))),
+    section('다음에 할 것', d.next.map((t) => reportRow('→', 'planned', t, ''))),
+    empty ? el('p', { class: 'muted small-text' }, '기록이 비어 있습니다.') : null,
+    el('div', { class: 'muted small-text day-path' }, `파일: production/desk/devlog/${d.date}.md`),
+  );
+}
 
-/** 아주 작은 마크다운 변환기 (제목·목록·문단·굵게·코드·링크만) */
-function renderMarkdown(text) {
-  let body = text;
-  if (text.startsWith('---')) {
-    const end = text.indexOf('\n---', 3);
-    if (end > 0) body = text.slice(end + 4);
+// ── 주 · 월 ──
+const periodStats = (p) => `출근 ${p.workDays}일 · ${fmtHours(p.hours)} · 집중 ${fmtHours(p.focusHours)}${p.hours ? ` (${Math.round(p.focusRatio * 100)}%)` : ''} · 완료 ${p.done.length}`;
+const periodLabel = (p, kind) => (kind === 'week' ? `${p.key.slice(5)} · ${mdShort(p.start)} ~ ${mdShort(p.end)}` : `${p.key.slice(0, 4)}년 ${Number(p.key.slice(5))}월`);
+
+function renderPeriods(ul, list, kind) {
+  for (const p of list) {
+    const open = openedPeriod === p.key;
+    const li = el('li', { 'data-key': p.key },
+      el('button', { class: `history-item${open ? ' open' : ''}`, onclick: () => { openedPeriod = open ? null : p.key; renderHistory(); } },
+        el('span', { class: 'h-date wide' }, periodLabel(p, kind)),
+        el('span', { class: 'h-title' }, periodStats(p)),
+      ),
+    );
+    if (open) li.append(renderPeriodCard(p, kind));
+    ul.append(li);
   }
-  const inline = (s) => esc(s)
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-  let html = '', inList = false, para = [];
-  const flushPara = () => { if (para.length) { html += `<p>${inline(para.join(' '))}</p>`; para = []; } };
-  const closeList = () => { if (inList) { html += '</ul>'; inList = false; } };
-  for (const raw of body.split(/\r?\n/)) {
-    const line = raw.trimEnd();
-    let m;
-    if ((m = line.match(/^(#{1,3})\s+(.*)$/))) { flushPara(); closeList(); const lv = m[1].length + 1; html += `<h${lv}>${inline(m[2])}</h${lv}>`; continue; }
-    if ((m = line.match(/^\s*[-*]\s+(.*)$/))) { flushPara(); if (!inList) { html += '<ul>'; inList = true; } html += `<li>${inline(m[1])}</li>`; continue; }
-    if (!line.trim()) { flushPara(); closeList(); continue; }
-    para.push(line);
+  if (!list.length) ul.append(el('li', { class: 'muted' }, '아직 기록이 없습니다.'));
+}
+
+/** 주 카드 = 요일별 막대 + 날짜 줄 / 월 카드 = 주별 막대 + 주 줄. 그 아래 완료·진행 중·결정 목록 */
+function renderPeriodCard(p, kind) {
+  const bars = [];
+  if (kind === 'week') {
+    for (let i = 0; i < 7; i++) {
+      const date = dateStr(addDays(parseDate(p.start), i));
+      const d = p.days.find((x) => x.date === date);
+      bars.push({
+        label: WEEKDAYS[(i + 1) % 7], hours: d ? d.hours : 0, focus: d ? d.focusHours : 0,
+        tip: d
+          ? `<div class="tt-title">${esc(mdShort(date))} (${WEEKDAYS[(i + 1) % 7]}) · Day ${d.day}</div><div class="tt-hours">${fmtHours(d.hours)} · 집중 ${fmtHours(d.focusHours)} (뽀모도로 ${d.pomodoros})</div>${d.summary ? `<div>${esc(d.summary)}</div>` : ''}`
+          : `<div class="tt-title">${esc(mdShort(date))} (${WEEKDAYS[(i + 1) % 7]})</div><div class="muted">기록 없음</div>`,
+      });
+    }
+  } else {
+    for (const w of p.weeks) {
+      bars.push({
+        label: w.key.slice(5), hours: w.hours, focus: w.focusHours,
+        tip: `<div class="tt-title">${esc(w.key.slice(5))} · ${esc(mdShort(w.start))} ~ ${esc(mdShort(w.end))}</div><div class="tt-hours">${esc(periodStats(w))}</div>`,
+      });
+    }
   }
-  flushPara();
-  closeList();
-  return html;
+  const rows = kind === 'week'
+    ? p.days.map((d) => el('li', {}, el('button', { class: 'history-item sub', onclick: () => showDay(d.date) },
+        el('span', { class: 'h-date' }, `${mdShort(d.date)} (${WEEKDAYS[d.dow]})`),
+        el('span', { class: 'h-hours' }, d.status === 'closed' ? fmtHours(d.hours) : '출근 중'),
+        el('span', { class: 'h-pomo' }, d.pomodoros ? `뽀 ${d.pomodoros}` : ''),
+        el('span', { class: 'h-title' }, d.summary || '(퇴근 전)'),
+      )))
+    : p.weeks.map((w) => el('li', {}, el('button', { class: 'history-item sub', onclick: () => { histMode = 'week'; openedPeriod = w.key; renderHistory(); } },
+        el('span', { class: 'h-date wide' }, periodLabel(w, 'week')),
+        el('span', { class: 'h-title' }, periodStats(w)),
+      )));
+  return el('div', { class: 'day-card period-card' },
+    el('div', { class: 'muted small-text' }, `${periodLabel(p, kind)} · ${periodStats(p)}${p.pomodoros ? ` · 뽀모도로 ${p.pomodoros}개` : ''}`),
+    barChart(bars),
+    el('div', { class: 'legend-bars' },
+      el('span', {}, el('i', { class: 'sw-hours' }), '근무 시간'),
+      el('span', {}, el('i', { class: 'sw-focus' }), '그중 집중(뽀모도로)'),
+    ),
+    el('ul', { class: 'list history sub-list' }, rows),
+    section('완료한 것', p.done.map((t) => reportRow('✓', 'done', t, ''))),
+    section(kind === 'week' ? '주말에 진행 중으로 남은 것' : '월말에 진행 중으로 남은 것', p.doing.map((t) => reportRow('◐', 'doing', t, ''))),
+    section('결정', p.decisions.map((t) => reportRow('•', 'plain', t, ''))),
+  );
+}
+
+// ── 막대 그래프 (SVG, 라이브러리 없음) ──
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function svg(tag, attrs = {}, ...children) {
+  const n = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null) continue;
+    if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else n.setAttribute(k, v);
+  }
+  for (const c of children.flat()) if (c != null) n.append(c instanceof Node ? c : document.createTextNode(String(c)));
+  return n;
+}
+/** 위쪽만 둥근 막대 (바닥에 붙음) */
+const roundedTop = (x, top, w, h) => {
+  const r = Math.min(4, h, w / 2);
+  return `M${x},${top + h} V${top + r} Q${x},${top} ${x + r},${top} H${x + w - r} Q${x + w},${top} ${x + w},${top + r} V${top + h} Z`;
+};
+/**
+ * bars = [{ label, hours, focus, tip }] — 바깥 막대 = 근무 시간, 안쪽 막대 = 그중 집중(뽀모도로). 같은 단위라 축은 하나.
+ * 격자는 옅게, 값 표시는 가장 긴 막대 하나만, 나머지는 호버 툴팁으로.
+ */
+function barChart(bars) {
+  const W = 640, H = 156, padL = 34, padR = 8, padT = 20, padB = 22; // 위 여백 = 가장 긴 막대의 값 글자 자리
+  const innerW = W - padL - padR, innerH = H - padT - padB;
+  const max = Math.max(1, ...bars.map((b) => b.hours));
+  const step = max <= 4 ? 1 : max <= 10 ? 2 : 4;
+  const top = Math.ceil(max / step) * step;
+  const y = (h) => padT + innerH - (h / top) * innerH;
+  const n = Math.max(1, bars.length), slot = innerW / n, bw = Math.min(44, slot * 0.6);
+  const g = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'bars', role: 'img', 'aria-label': '근무 시간과 집중 시간 막대 그래프' });
+  for (let h = 0; h <= top; h += step) {
+    g.append(svg('line', { x1: padL, x2: W - padR, y1: y(h), y2: y(h), class: 'grid' }));
+    g.append(svg('text', { x: padL - 6, y: y(h) + 4, class: 'tick', 'text-anchor': 'end' }, `${h}h`));
+  }
+  const maxIdx = bars.reduce((m, b, i) => (b.hours > bars[m].hours ? i : m), 0);
+  bars.forEach((b, i) => {
+    const cx = padL + slot * i + slot / 2;
+    const x = cx - bw / 2;
+    const grp = svg('g', { class: 'bar-g', onpointerover: (e) => tip(e.currentTarget, b.tip), onpointerout: hideTooltip });
+    grp.append(svg('rect', { x: cx - slot / 2 + 1, y: padT, width: Math.max(1, slot - 2), height: innerH, class: 'hit' })); // 막대보다 큰 호버 영역
+    if (b.hours > 0) grp.append(svg('path', { d: roundedTop(x, y(b.hours), bw, y(0) - y(b.hours)), class: 'bar-hours' }));
+    if (b.focus > 0) grp.append(svg('path', { d: roundedTop(x + bw * 0.2, y(b.focus), bw * 0.6, y(0) - y(b.focus)), class: 'bar-focus' }));
+    if (i === maxIdx && b.hours > 0) grp.append(svg('text', { x: cx, y: y(b.hours) - 5, class: 'val', 'text-anchor': 'middle' }, fmtHours(b.hours)));
+    grp.append(svg('text', { x: cx, y: H - 6, class: 'tick', 'text-anchor': 'middle' }, b.label));
+    g.append(grp);
+  });
+  g.append(svg('line', { x1: padL, x2: W - padR, y1: y(0), y2: y(0), class: 'axis' }));
+  return g;
 }
 
 // ── 도장 · 토스트 · 타이머 ──

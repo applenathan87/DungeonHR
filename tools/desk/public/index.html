@@ -49,20 +49,15 @@
   </section>
 
   <section class="card wide" id="history-card">
-    <h2>지난 데브로그</h2>
+    <div class="card-head">
+      <h2>지난 데브로그</h2>
+      <div id="history-mode" class="seg" aria-label="일·주·월 보기"></div>
+    </div>
     <ul id="history-list" class="list history"></ul>
   </section>
 </main>
 
 <div id="tooltip" class="tooltip" role="tooltip" hidden></div>
-
-<div id="modal" class="modal" hidden>
-  <div class="modal-backdrop" data-close></div>
-  <div class="modal-panel" role="dialog" aria-modal="true">
-    <button class="modal-close" data-close aria-label="닫기">×</button>
-    <div class="modal-body" id="modal-body"></div>
-  </div>
-</div>
 
 <!-- 도장 연출: 출근/복귀=초록, 부재=노랑, 퇴근=초록+인사말+컨페티 -->
 <div id="stamp" class="stamp" hidden>

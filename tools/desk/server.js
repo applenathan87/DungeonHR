@@ -16,6 +16,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFile } = require('child_process');
 const todoMd = require('./todo'); // todo.md 파서/직렬화 (모르는 줄은 보존)
+const stats = require('./stats');  // 주·월 집계 (기록 보기·회고 통계·today.md 가 같은 숫자를 쓴다)
 
 // ───────────────────────── 파일 읽기/쓰기 도우미 ─────────────────────────
 /** UTF-8 로 읽되, 메모장 등이 붙이는 BOM(맨 앞 보이지 않는 글자)은 뗀다 — 안 떼면 frontmatter 판정이 깨진다 */
@@ -178,7 +179,8 @@ function parseDoc(text) {
 }
 
 // ───────────────────────── 본문 섹션 ─────────────────────────
-const SECTIONS = ['한 일', '배운 것', '막힌 것', '다음에 할 것'];
+// 퇴근 보고 3칸(2026-09-15, M00-03): "한 일"은 오늘 항목 상태로 자동, 메모·다음에 할 것은 사람이. 옛 파일의 "배운 것/막힌 것"은 모르는 섹션으로 보존된다.
+const SECTIONS = ['한 일', '메모', '다음에 할 것'];
 
 /** 본문 → [{ name, lines }] (name=null 은 첫 헤더 앞 텍스트) */
 function parseSections(body) {
@@ -198,9 +200,9 @@ const bulletsOf = (section) =>
     ? section.lines.map((l) => l.match(/^\s*[-*]\s+(.*)$/)).filter(Boolean).map((m) => m[1].trim()).filter(Boolean)
     : [];
 
-/** 폼 입력(줄 배열) → 4단 본문. 모르는 섹션은 뒤에 그대로 보존한다. */
+/** 줄 배열 → 3단 본문. 모르는 섹션(옛 "배운 것/막힌 것" 등)은 뒤에 그대로 보존한다. */
 function buildBody(fields, existingBody) {
-  const map = { '한 일': fields.did, '배운 것': fields.learned, '막힌 것': fields.blocked, '다음에 할 것': fields.next };
+  const map = { '한 일': fields.did, '메모': fields.memo, '다음에 할 것': fields.next };
   const existing = existingBody ? parseSections(existingBody) : [];
   const parts = [];
   for (const name of SECTIONS) {
@@ -211,7 +213,9 @@ function buildBody(fields, existingBody) {
     parts.push(`## ${name}\n${lines.join('\n')}`.trimEnd());
   }
   for (const s of existing) {
-    if (s.name && !SECTIONS.includes(s.name)) parts.push(`## ${s.name}\n${s.lines.join('\n').trim()}`);
+    if (!s.name || SECTIONS.includes(s.name)) continue;
+    const rest = s.lines.join('\n').trim();
+    if (rest) parts.push(`## ${s.name}\n${rest}`); // 내용이 있는 옛 절만 보존 — 빈 "배운 것/막힌 것"은 버린다 (2026-09-15)
   }
   return parts.join('\n\n') + '\n';
 }
@@ -286,7 +290,8 @@ function summarizeDay(d) {
     picked: d.fm.picked || [],
     done: d.fm.done || [],
     did: bulletsOf(find('한 일')),
-    learned: bulletsOf(find('배운 것')),
+    memo: bulletsOf(find('메모')),
+    learned: bulletsOf(find('배운 것')),   // ver01 파일용 (지금 폼에는 없음)
     blocked: bulletsOf(find('막힌 것')),
     next: bulletsOf(find('다음에 할 것')),
   };
@@ -412,13 +417,25 @@ function clockOut(fields) {
   d.fm.status = 'closed';
   d.fm.hours = computeHours(sessions);
   d.fm.title = `Day ${d.fm.day} — ${summary}`;
-  d.body = buildBody(
-    { did: asLines(fields.did), learned: asLines(fields.learned), blocked: asLines(fields.blocked), next: asLines(fields.next) },
-    d.body,
-  );
+  // "한 일"은 오늘 항목의 상태(줄에서 즉시 저장된 것)로 자동 작성. 진행 중·예정 항목은 "다음에 할 것"에 자동으로 들어가
+  // 내일 아침 "어제 이어가기"가 된다. 사람이 적은 "다음에 할 것"은 그 뒤에 (자동 줄과 같은 항목이면 뺀다).
+  const report = todayReport(d);
+  const did = [
+    ...report.done.map((x) => `[완료] ${x.text}`),
+    ...report.doing.map((x) => `[진행] ${x.text}${x.note ? ` — ${x.note}` : ''}`),
+  ];
+  const auto = [...report.doing, ...report.planned].map((x) => x.text);
+  const typed = uniq(asLines(fields.next)).filter((l) => !auto.some((a) => todoMd.sameTask(a, l)));
+  d.body = buildBody({ did, memo: asLines(fields.memo), next: [...auto, ...typed] }, d.body);
   writeDay(d);
   pomoClear(); // 퇴근하면 뽀모도로는 멈춘다
   return d;
+}
+
+/** 그날 고른 항목을 완료·진행 중·예정으로 나눈 결과표 (todo.md 상태 + 데브로그 done) */
+function todayReport(day) {
+  const t = readTodos();
+  return todoMd.dayReport(day.fm.picked || [], [...t.open, ...t.done], day.fm.done || []);
 }
 
 // ───────────────────────── 부재 / 복귀 / 뽀모도로 ─────────────────────────
@@ -564,6 +581,8 @@ function stateJson() {
   // "어제" = 가장 최근에 퇴근한 날 (오늘 퇴근했다가 다시 출근하면 오늘). 그날의 "다음에 할 것"이 출근 추천의 재료
   const lastClosed = [...days].reverse().find((d) => d.status === 'closed') || null;
   const lastNext = { date: lastClosed ? lastClosed.date : null, lines: lastClosed ? lastClosed.next : [] };
+  const reportDay = active || todayDay; // 근무 중이면 오늘, 퇴근했으면 오늘 결과
+  const report = reportDay ? todoMd.dayReport(reportDay.picked, [...todos.open, ...todos.done], reportDay.done) : null;
   return {
     now: new Date().toISOString(),
     nowMs: Date.now(),
@@ -574,7 +593,9 @@ function stateJson() {
     nextDayNumber: todayDay ? todayDay.day : nextDayNumber(today),
     todos,
     lastNext,
-    pick: todoMd.pickList([...todos.open, ...todos.done], lastNext.lines), // 출근 화면 고르기 목록 + 미리 체크 1개
+    report, // 오늘 결과표 { done, doing, planned } — 근무 중·퇴근 뒤 카드와 퇴근 보고 미리보기
+    periods: stats.aggregate(days, pomoCfg().focus), // { weeks, months } — 주/월 기록 보기(그래프·표)
+    pick: todoMd.pickList([...todos.open, ...todos.done], lastNext.lines), // 출근 화면 고르기 목록 + 미리 1장
     days,
     config: {
       seasonStart: config.seasonStart,

@@ -225,6 +225,27 @@ function pickList(tasks, lastNext = []) {
   return { items, hold, preselect, unmatched };
 }
 
+// ───────────────────────── 오늘 결과표 ─────────────────────────
+/**
+ * 오늘 고른 항목을 상태별로 나눈다 — 퇴근 보고 "한 일"·"다음에 할 것" 자동 작성과 퇴근 뒤 결과 카드가 같이 쓴다.
+ * picked = 오늘 고른 본문들(순서 유지), tasks = publicTask 배열(열림·완료 모두), doneTexts = 데브로그 done 목록
+ * → { done: [{text, note}], doing: [{text, note}], planned: [{text, note}] }   (planned = 예정: 오늘 손 안 댐 → 내일 이어가기)
+ */
+function dayReport(picked, tasks, doneTexts = []) {
+  const out = { done: [], doing: [], planned: [] };
+  for (const raw of picked || []) {
+    const text = String(raw || '').trim();
+    if (!text) continue;
+    const t = tasks.find((x) => sameTask(x.text, text));
+    const isDone = doneTexts.some((d) => sameTask(d, text)) || (!!t && t.status === 'done');
+    const item = { text: t ? t.text : text, note: t ? t.note || '' : '' };
+    if (isDone) out.done.push(item);
+    else if (t && t.status === 'doing') out.doing.push(item);
+    else out.planned.push(item);
+  }
+  return out;
+}
+
 // ───────────────────────── 수정 ─────────────────────────
 
 /** `## name` 절의 범위 { start: 제목 블록 인덱스, end: 다음 제목(같거나 높은 단계) 인덱스 }. 없으면 만들어서 돌려준다 */
@@ -304,7 +325,7 @@ function setText(doc, block, text) {
 
 module.exports = {
   TEMPLATE, SECTION_OPEN, SECTION_DONE, CLOSED, OPEN_ORDER,
-  parse, serialize, tasksOf, findTask, publicTask, split, pickList,
+  parse, serialize, tasksOf, findTask, publicTask, split, pickList, dayReport,
   addTask, removeTask, setStatus, setText,
   taskId, sameTask,
 };

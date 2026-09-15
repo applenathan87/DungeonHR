@@ -191,6 +191,16 @@ test('pickList: 어제 줄이 목록에 없으면 unmatched, 완료와 같은 �
   assert.equal(p.preselect, '오크 리깅');
 });
 
+test('dayReport: 고른 항목을 완료·진행 중·예정으로, 순서 유지, id 로도 찾는다', () => {
+  const { open, done } = todo.split(todo.parse(PICK_SRC));
+  const tasks = [...open, ...done];
+  const r = todo.dayReport(['[M00-02] 문장이 바뀜', '고블린 텍스처', '콜로소 강의', '끝난 것', '목록에 없는 것'], tasks, ['콜로소 강의']);
+  assert.deepEqual(r.done.map((x) => x.text), ['콜로소 강의', '끝난 것']);       // 데브로그 done 또는 todo 완료
+  assert.deepEqual(r.doing.map((x) => [x.text, x.note]), [['고블린 텍스처', '절반']]);
+  assert.deepEqual(r.planned.map((x) => x.text), ['[M00-02] 마일스톤 읽기', '목록에 없는 것']); // 열림·없는 것 = 예정
+  assert.deepEqual(todo.dayReport([], tasks), { done: [], doing: [], planned: [] });
+});
+
 test('TEMPLATE 은 그 자체로 왕복된다', () => {
   assert.equal(todo.serialize(todo.parse(todo.TEMPLATE)), todo.TEMPLATE);
 });
