@@ -6,12 +6,14 @@ Papers, Please식 심문·판단 + 책상 위 물건(도장·이력서·질문�
 ## 정본 (내용은 여기서 설명하지 않는다 — 링크만)
 
 - **게임 컨셉 정본**: [design/gdd/game-concept.md](design/gdd/game-concept.md) (2026-09-12 v1 — 피치·후크·필라·코어 루프·MVP 정의) · 상세 기획: [design/concept/mvp-design.md](design/concept/mvp-design.md) · 컨셉 원문: [concept-demon-hr.md](design/concept/concept-demon-hr.md) · 인덱스: [design/concept/_index.md](design/concept/_index.md) · 화면 목업: [design/concept/refs/면접화면-목업.png](design/concept/refs/면접화면-목업.png). 어긋나면 game-concept.md가 우선.
-- **비주얼 방향** (아트 정본 재작성 전까지 이 두 줄이 기준): 캐릭터·환경·소품 전부 **로우폴리 3D — 블렌더 + Substance Painter(핸드페인트풍 텍스처)**. 복셀풍(블로키) 캐릭터 룩은 2026-09-12 폐기 (MagicaVoxel은 2026-08-18 폐기). 톤 = 촛불 켜진 마왕성 사무실, 따뜻+어두운 대비, "귀여운데 사악한". 카메라 = 고정 데스크 클로즈업. 애니 = 면접 리액션 2종(긴장/안도) + 이펙트 수준. 코지 미니어처·틸트시프트 톤은 미승계. [ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md)·아트바이블·에셋 체크리스트의 "복셀풍" 표기는 STALE — GDD v1 후 아트 정본 재작성 때 갱신.
+- **비주얼 방향** (아트 정본 재작성 전까지 이 두 줄이 기준): 캐릭터·환경·소품 전부 **로우폴리 3D — 블렌더 + Substance Painter(핸드페인트풍 텍스처)**. 복셀풍(블로키) 캐릭터 룩은 2026-09-12 폐기 (MagicaVoxel은 2026-08-18 폐기). 톤 = 촛불 켜진 마왕성 사무실, 따뜻+어두운 대비, "귀여운데 사악한". 카메라 = 고정 데스크 클로즈업. 애니 = 면접 리액션 2종(긴장/안도) + 이펙트 수준. 코지 미니어처·틸트시프트 톤은 미승계. [ADR-002](docs/architecture/ADR-002-visual-style-low-poly-3d.md)·아트바이블·에셋 체크리스트의 "복셀풍" 표기는 STALE — M02 룩 테스트 결정 뒤 아트 정본 재작성 때 갱신.
 - **폐기 컨셉(참조 금지)**: [design/gdd/_archive/README.md](design/gdd/_archive/README.md) — **PvP·고스트·매칭·판돈·심리전 / 헥사·영토 확장·내 군대·400명 전투·소모전·permadeath·오토배틀러** 키워드가 나오면 옛 맥락이다. ADR-001·003도 Superseded.
 
 ## 지금 — 어디서 무엇을
 
-- 순서 = **기획 → 제작.** 지금은 기획: design/concept → 10/1 새 시즌 첫 마일스톤 **"GDD v1 확정"**(design/gdd로 승격) ← **지금 여기**. 제작은 GDD v1 확정 뒤 최상위 `game/`에 유니티 프로젝트를 만들며 시작 (병행 안 함, 2026-09-12 결정). 구현 순서 초안 = [design/concept/build-roadmap.md](design/concept/build-roadmap.md) (옛 Origin 로드맵 — GDD v1 뒤 마일스톤으로 재작성). 옛 프로토 코드는 구조·데이터 참고만, 재작성.
+- **마일스톤 정본 = [production/milestones/README.md](production/milestones/README.md)** (2026-09-30에 새로 짬 · 새 시즌 Day 1 = 2026-10-01 · 데모 마감 가정 2027-04-15 · 7개). 지금 = **[M01 기초](production/milestones/M01-foundation.md)** (10/1~10/28: 블렌더 복습·면접실 구도 + GDD 케이스 데이터·지침·판정) ← **지금 여기**
+- 순서 = **기획과 제작을 번갈아 한다** — 곧 만들 부분의 GDD만 쓰고 바로 그 부분을 만든다 (2026-09-30 결정 — 9/12의 "GDD v1 전부 → 제작"을 대신한다). **하루에 아트·기획·코드 세 가지 작업을 섞는다**: 아트(강의 → 면접실 → 몬스터) · 기획(GDD → 케이스) · 코드(M03부터). `game/`은 M01에 Unity Hub로 만들되 **M03 전까지 게임 기능 코드 없음**(룩 확인용 씬만). 7월 프로토타입 코드는 구조·데이터 참고만 하고 다시 쓴다. [build-roadmap.md](design/concept/build-roadmap.md)의 0~9단계는 마일스톤에 합쳐졌다 — 확인하기로 한 세 가지(분위기·도장·"오?")만 이어받는다. 마일스톤 끝의 질문에는 실제 게임을 주변 사람에게 시켜 보고 답한다.
+- **데모 범위 변경 (2026-09-30)**: 영문 제외 · 사운드 진행 방식 미정. game-concept.md·mvp-design.md 등에 남은 "영문 동시"·"GDD v1 → game/" 표기는 옛 내용이다 — M01 할 일 24번에서 고친다.
 - 작업 기록 = 출근부([tools/desk](tools/desk/README.md), 데이터 `production/desk/`) 한 곳 · 세션 상태 = `production/session-state/active.md` · 2026-09-12 폴더 재정비 기록 = [production/reorg-2026-09.md](production/reorg-2026-09.md)
 
 ## 일하는 법
@@ -25,7 +27,7 @@ Papers, Please식 심문·판단 + 책상 위 물건(도장·이력서·질문�
 ## 기술
 
 - Unity **6000.5.1f1**(Unity 6.5) + URP · C# · Blender 로우폴리 단일 파이프라인 · UI Toolkit · Addressables · Git(trunk-based)
-- ⚠ `technical-preferences.md`·`coding-standards.md`는 템플릿 시절 파일 — 쿼터뷰·카드 드래그·RPS·틱 전투·덱 셔플 등 **옛 컨셉 잔재는 무시**(GDD v1 때 정리). 네이밍·금지 패턴·허용 라이브러리·스페셜리스트 라우팅은 유효.
+- ⚠ `technical-preferences.md`·`coding-standards.md`는 템플릿 시절 파일 — 쿼터뷰·카드 드래그·RPS·틱 전투·덱 셔플 등 **옛 컨셉 잔재는 무시**(M03 코드 착수 전에 정리). 네이밍·금지 패턴·허용 라이브러리·스페셜리스트 라우팅은 유효.
 
 @docs/engine-reference/unity/VERSION.md
 @.claude/docs/technical-preferences.md

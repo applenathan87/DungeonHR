@@ -6,18 +6,19 @@
 /
 ├── CLAUDE.md                    # Master configuration (일하는 법 · 정본 링크 · 지금 어디)
 ├── .claude/                     # Agent definitions, skills, hooks, rules, docs
-├── game/                        # ⭐ 유니티 프로젝트 (Unity 6000.5.1f1 + URP) — GDD v1 확정 뒤 Unity Hub로 생성 (아직 없음)
+├── game/                        # ⭐ 유니티 프로젝트 (Unity 6000.5.1f1 + URP) — M01에 Unity Hub로 생성 (아직 없음). M03 전까지 LookTest 씬만, 게임플레이 코드 없음
 │                                #   Hub: Location=C:\DungeonHR, Project name=game. 미리 만들어 두지 않는다 (Hub가 거부). 생성 직후 game/CLAUDE.md 추가
+├── artwork/                     # 아트 원본 작업 파일 (2026-09-30) — room/ · characters/ · _study/(강의 연습, gitignored). .blend 커밋, .spp·블렌더 백업 제외. 규칙 = artwork/README.md
 ├── design/                      # 기획 = 볼트의 심장
 │   ├── concept/                 # 현행 기획 정본 (concept-demon-hr · mvp-design · interview_idea … · build-roadmap(구현 순서 초안) · refs/ 목업) ← 옛 ideation/
-│   ├── gdd/                     # 정식 GDD (8섹션 표준) — 10월 첫 마일스톤 "GDD v1"에서 작성. _archive/README = 죽은 컨셉 연혁
+│   ├── gdd/                     # 정식 GDD (8섹션 표준) — M01~M04에 나눠 쓴다 (곧 만들 부분의 GDD만). _archive/README = 죽은 컨셉 연혁
 │   ├── art/                     # 아트 바이블(STALE, 재작성 대기) · visual-polish
 │   └── research/                # notes/(기획 이론 노트) · takeaways.md(읽기 볼트 결론) · ref-games/(레퍼런스 게임 조사 ← 옛 REF_GAME/)
-├── docs/                        # 기술 문서 — architecture/(ADR) · pipeline/(블렌더 로우폴리 가이드, 블렌더→유니티) · onboarding-brief · WORKFLOW-GUIDE
+├── docs/                        # 기술 문서 — architecture/(ADR) · pipeline/(블렌더 로우폴리 가이드, 블렌더→유니티, art-courses = 강의·자료 링크 목록) · onboarding-brief · WORKFLOW-GUIDE
 │   └── engine-reference/        # Curated engine API snapshots (version-pinned)
 ├── production/                  # 기록·PM
 │   ├── desk/                    # 출근부 데이터 (todo.md = 오늘 할 일(당긴 것 ≤3 + 잡무) · devlog/YYYY-MM-DD.md) — 유일한 작업 기록
-│   ├── milestones/              # 마일스톤 파일 (M00 준비 · M01 GDD v1 …) — 한 번에 하나만 active, 백로그 = 세션 단위 항목. 세부 목록은 도메인 문서(시스템 인덱스·에셋 체크리스트)
+│   ├── milestones/              # 마일스톤 파일 (README = 전체 그림·규칙 · M01 기초 … M07 제출, 2026-09-30에 새로 짬) — 한 번에 하나만 진행, 할 일 목록 = 하루 이틀 크기 항목. 자세한 목록은 각 주제 문서(시스템 인덱스·에셋 체크리스트)
 │   ├── session-state/           # Session state (active.md)
 │   ├── session-logs/            # Session audit trail (gitignored)
 │   └── reorg-2026-09.md         # 2026-09 폴더 재정비 기록

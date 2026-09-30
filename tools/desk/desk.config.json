@@ -1,8 +1,8 @@
 {
   "port": 4123,
   "dataDir": "../../production/desk",
-  "seasonStart": "2026-09-09",
-  "heatStart": "2026-09-01",
+  "seasonStart": "2026-10-01",
+  "heatStart": "2026-10-01",
   "autoPush": true,
   "heatLevels": [1, 2, 4, 6],
   "maxPick": 3,

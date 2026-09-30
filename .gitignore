@@ -149,3 +149,14 @@ image/
 
 # === 출근부 로컬 상태 (tools/desk) ===
 tools/desk/.pomo.json
+
+# === 개인 서류 (게임과 무관 — 커밋 안 함) ===
+ETC/
+
+# === 아트 원본 (artwork/) — .blend 는 커밋, 아래는 제외. 규칙 = artwork/README.md ===
+# 블렌더 자동 백업 (.blend1, .blend2 …)
+*.blend[0-9]*
+# Substance Painter 프로젝트 (용량 큼 — 따로 백업)
+*.spp
+# 강의 따라 하기 연습 파일
+artwork/_study/
