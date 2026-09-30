@@ -13,7 +13,7 @@ Papers, Please식 심문·판단 + 책상 위 물건(도장·이력서·질문�
 
 - **마일스톤 정본 = [production/milestones/README.md](production/milestones/README.md)** (2026-09-30에 새로 짬 · 새 시즌 Day 1 = 2026-10-01 · 데모 마감 가정 2027-04-15 · 7개). 지금 = **[M01 기초](production/milestones/M01-foundation.md)** (10/1~10/28: 블렌더 복습·면접실 구도 + GDD 케이스 데이터·지침·판정) ← **지금 여기**
 - 순서 = **기획과 제작을 번갈아 한다** — 곧 만들 부분의 GDD만 쓰고 바로 그 부분을 만든다 (2026-09-30 결정 — 9/12의 "GDD v1 전부 → 제작"을 대신한다). **하루에 아트·기획·코드 세 가지 작업을 섞는다**: 아트(강의 → 면접실 → 몬스터) · 기획(GDD → 케이스) · 코드(M03부터). `game/`은 M01에 Unity Hub로 만들되 **M03 전까지 게임 기능 코드 없음**(룩 확인용 씬만). 7월 프로토타입 코드는 구조·데이터 참고만 하고 다시 쓴다. [build-roadmap.md](design/concept/build-roadmap.md)의 0~9단계는 마일스톤에 합쳐졌다 — 확인하기로 한 세 가지(분위기·도장·"오?")만 이어받는다. 마일스톤 끝의 질문에는 실제 게임을 주변 사람에게 시켜 보고 답한다.
-- **데모 범위 변경 (2026-09-30)**: 영문 제외 · 사운드 진행 방식 미정. game-concept.md·mvp-design.md 등에 남은 "영문 동시"·"GDD v1 → game/" 표기는 옛 내용이다 — M01 할 일 24번에서 고친다.
+- **데모 범위 변경 (2026-09-30)**: 영문 제외 · 사운드 진행 방식 미정. game-concept.md·mvp-design.md 등에 남은 "영문 동시"·"GDD v1 → game/" 표기는 옛 내용이다 — M01 할 일 "옛 문서 고치기"에서 고친다.
 - 작업 기록 = 출근부([tools/desk](tools/desk/README.md), 데이터 `production/desk/`) 한 곳 · 세션 상태 = `production/session-state/active.md` · 2026-09-12 폴더 재정비 기록 = [production/reorg-2026-09.md](production/reorg-2026-09.md)
 
 ## 일하는 법

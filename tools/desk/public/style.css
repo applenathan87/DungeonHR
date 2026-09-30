@@ -12,6 +12,7 @@
   --accent-ink: #1a1207;
   --danger: #c8452f;
   --good: #7cc47c;
+  --reco: #ffd84d; /* 추천 항목의 노란색 — 호박색(--accent, 진행 중 표시)과 구분되게 더 밝은 노랑 */
   /* 히트맵 단계 — 빈 칸(체크 안 함)은 색기 없는 진회색. 한 날은 잉크 5단계: 연한 노랑 → 노랑 → 호박 → 진한 호박 → 가장 진한 호박
      (많이 할수록 잉크가 짙어지는 순서. validate_palette --ordinal 통과) */
   --heat-0: #2c2a27;
@@ -396,6 +397,12 @@ textarea { resize: vertical; min-height: 64px; }
 .list li.dragging { opacity: 0.45; }
 .grip { color: var(--muted); font-size: 12px; letter-spacing: -3px; user-select: none; flex: none; padding-right: 4px; }
 #todo-card.over { outline: 1px dashed var(--accent); outline-offset: -6px; }
+/* 추천 항목 (출근 전 대기 목록 맨 위) — 노란 줄 + 노란 글씨 + 옅은 노란 바탕으로 눈에 띄게 (2026-10-01) */
+.list li.reco { border-left: 3px solid var(--reco); padding-left: 10px; background: rgba(255, 216, 77, 0.07); }
+.list li.reco .t { color: var(--reco); }
+/* 묶음 이름표: "추천" / "그 밖의 할 일" — 카드가 아니라 작은 제목 한 줄 */
+.list li.group-label { display: block; border-bottom: none; padding: 12px 4px 4px; font-size: 12px; color: var(--muted); cursor: default; }
+.list li.group-label.reco-label { color: var(--reco); font-weight: 700; padding-top: 2px; }
 
 /* ── 출근 뒤 오늘 할 일: 줄마다 [완료 | 진행 중 | 내일로] ── */
 .list.picked li.today-row { flex-wrap: wrap; }

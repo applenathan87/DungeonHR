@@ -267,6 +267,8 @@ function endDrag(e) {
   $('#todo-card').classList.remove('over');
 }
 const nextTag = (t) => (t.reason === 'next' ? el('span', { class: 'tag next' }, '어제 이어가기') : null);
+/** 추천 = 서버가 정한 순서(진행 중 → 어제 이어가기 → 목록 순서)의 맨 앞 maxPick 개. 대기 목록 맨 위에 노란색으로 묶어 보여 준다 */
+const isReco = (t) => S.pick.items.slice(0, S.config.maxPick).some((x) => sameTask(x.text, t.text));
 
 /** 왼쪽 "오늘" 칸. 드롭 = 올리기·순서 바꾸기, "−" = 대기로 내리기 */
 function renderTray() {
@@ -300,19 +302,27 @@ function renderTray() {
 function renderBacklog(ul, extra) {
   syncTray();
   const pick = S.pick;
-  $('#todo-hint').textContent = '왼쪽 "오늘 할 일"로 끌어 올리거나 "추가"를 누르세요. 순서는 진행 중 → 어제 이어가기 → 열림.';
+  $('#todo-hint').textContent = '왼쪽 "오늘 할 일"로 끌어 올리거나 "추가"를 누르세요. 노란색은 추천이고, 아무거나 골라도 됩니다.';
   $('#todo-hint').hidden = false;
   const rest = backlogItems();
-  for (const t of rest) {
-    ul.append(el('li', { draggable: 'true', 'data-text': t.text, ondragstart: (e) => startDrag(e, t.text, 'backlog'), ondragend: endDrag },
-      el('span', { class: 'grip', title: '끌어서 오늘 할 일로' }, '⋮⋮'),
-      taskLabel(t, { tags: nextTag(t) }),
-      el('span', { class: 'li-actions' },
-        el('button', { class: 'btn small', title: '오늘 할 일에 추가', onclick: () => { trayInsert(t.text, tray.length); rerenderIdle(); } }, '추가'),
-        el('button', { class: 'icon-btn danger', title: '삭제', onclick: () => confirm(`삭제할까요?\n${t.text}`) && todo('remove', t.text) }, '×'),
-      ),
-    ));
+  // 추천(맨 앞 maxPick 개 중 아직 대기 중인 것)을 맨 위에 노란색으로 묶고, 그 아래에 나머지를 목록 순서대로 둔다.
+  // 묶음 이름표(li.group-label)는 data-text 가 없어서 끌기·놓기 계산(dropIndex)에 끼지 않는다.
+  const reco = rest.filter(isReco);
+  const others = rest.filter((t) => !isReco(t));
+  const row = (t, cls) => el('li', { class: cls, draggable: 'true', 'data-text': t.text, ondragstart: (e) => startDrag(e, t.text, 'backlog'), ondragend: endDrag },
+    el('span', { class: 'grip', title: '끌어서 오늘 할 일로' }, '⋮⋮'),
+    taskLabel(t, { tags: nextTag(t) }),
+    el('span', { class: 'li-actions' },
+      el('button', { class: 'btn small', title: '오늘 할 일에 추가', onclick: () => { trayInsert(t.text, tray.length); rerenderIdle(); } }, '추가'),
+      el('button', { class: 'icon-btn danger', title: '삭제', onclick: () => confirm(`삭제할까요?\n${t.text}`) && todo('remove', t.text) }, '×'),
+    ),
+  );
+  if (reco.length) {
+    ul.append(el('li', { class: 'group-label reco-label' }, '추천'));
+    for (const t of reco) ul.append(row(t, 'reco'));
+    if (others.length) ul.append(el('li', { class: 'group-label' }, '그 밖의 할 일'));
   }
+  for (const t of others) ul.append(row(t, null));
   if (!rest.length) ul.append(el('li', { class: 'muted' }, tray.length ? '대기 중인 할 일이 없습니다.' : '할 일이 없습니다. 위에서 추가하세요.'));
   if (pick.unmatched.length) extra.append(el('p', { class: 'muted small-text' }, `어제 적은 것 중 목록에 없음: ${pick.unmatched.join(' · ')}`));
   if (pick.hold.length) {
