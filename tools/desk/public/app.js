@@ -133,6 +133,16 @@ function minutesSince(date, hhmm) {
 const elapsedMinutes = () => (S.active && S.active.status === 'open' ? minutesSince(S.active.date, S.active.openSince) : 0);
 /** 부재 중이면 부재 시작 후 지난 분 */
 const awayMinutes = () => (S.active && S.active.status === 'away' ? minutesSince(S.active.date, S.active.awaySince) : 0);
+/**
+ * 근무 중 머리줄의 시각 글자: 그날 처음 출근한 시각을 적는다. 예: " · 10:52 출근".
+ * 부재에서 돌아온 뒤에는 복귀 시각을 뒤에 붙인다. 예: " · 10:52 출근 · 17:33 복귀".
+ * (openSince 는 지금 열린 세션의 시작이라, 복귀 뒤에는 출근 시각이 아니라 복귀 시각이다)
+ */
+function clockInLabel() {
+  const first = (S.active.sessions[0] || '').split('-')[0] || S.active.openSince;
+  const back = S.active.sessions.length > 1 ? ` · ${S.active.openSince} 복귀` : '';
+  return ` · ${first} 출근${back}`;
+}
 /** 오늘 누적 근무 분 = 닫힌 세션 합 + 현재 세션 경과. 부재 시간은 세션 사이 빈 틈이라 자동으로 빠진다 */
 const todayWorkedMinutes = () => (S.active ? S.active.workedMinutes + elapsedMinutes() : 0);
 
@@ -178,7 +188,7 @@ function renderWork() {
           '오늘 누적 ', el('strong', { id: 'elapsed' }, fmtDuration(todayWorkedMinutes())),
           away
             ? [` · ${S.active.awaySince} 부재 시작, `, el('strong', { id: 'away-elapsed' }, fmtDuration(awayMinutes())), ' 지남']
-            : ` · ${S.active.openSince}부터 근무 중`,
+            : clockInLabel(),
         ),
       ),
       el('h2', {}, `Day ${S.active.day} · 오늘 할 일`),
