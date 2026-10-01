@@ -287,6 +287,7 @@ function summarizeDay(d) {
     awaySince: status === 'away' ? last.split('-')[1] || null : null, // 부재 버튼을 누른 시각
     workedMinutes: closedMinutes(sessions),                            // 닫힌 세션 합(분) — 화면의 "오늘 누적"용
     pomodoros: Number(d.fm.pomodoros) || 0,
+    partialMinutes: Number(d.fm.partialMinutes) || 0, // 중간에 멈춘 집중(분) — 개수에는 안 들어가고 집중 시간에만 더한다
     picked: d.fm.picked || [],
     done: d.fm.done || [],
     did: bulletsOf(find('한 일')),
@@ -427,6 +428,7 @@ function clockOut(fields) {
   const auto = [...report.doing, ...report.planned].map((x) => x.text);
   const typed = uniq(asLines(fields.next)).filter((l) => !auto.some((a) => todoMd.sameTask(a, l)));
   d.body = buildBody({ did, memo: asLines(fields.memo), next: [...auto, ...typed] }, d.body);
+  addPartialFocus(d); // 돌던 집중이 있으면 그때까지의 분을 남긴다 (같은 d 에 적어야 아래 저장에 같이 들어간다)
   writeDay(d);
   pomoClear(); // 퇴근하면 뽀모도로는 멈춘다
   return d;
@@ -450,6 +452,7 @@ function goAway() {
   d.fm.sessions = sessions;
   d.fm.status = 'away';
   d.fm.hours = computeHours(sessions);
+  addPartialFocus(d); // 돌던 집중이 있으면 그때까지의 분을 남긴다
   writeDay(d);
   pomoClear(); // 자리를 비우면 뽀모도로는 멈춘다
   return d;
@@ -474,8 +477,34 @@ function addPomodoro() {
   return d;
 }
 
+/** 지금 돌고 있는 집중이 시작부터 몇 분 지났는지. 휴식 중이거나 안 돌고 있으면 0, 1분 미만도 0 (잘못 누른 것) */
+function partialFocusMinutes() {
+  if (!pomo || pomo.phase !== 'focus') return 0;
+  return Math.max(0, Math.floor((Math.min(Date.now(), pomo.endsAt) - pomo.startedAt) / 60000));
+}
+
+/**
+ * 집중을 중간에 멈출 때: 그때까지의 분을 그날 파일의 partialMinutes 에 더한다.
+ * 개수(pomodoros)는 끝까지 채운 것만 세므로 올리지 않는다 — 집중 시간 통계에만 들어간다.
+ * d 를 고치기만 하고 저장은 부른 쪽이 한다 (퇴근·부재는 같은 d 를 곧바로 저장하므로).
+ */
+function addPartialFocus(d) {
+  const m = partialFocusMinutes();
+  if (m > 0) d.fm.partialMinutes = (Number(d.fm.partialMinutes) || 0) + m;
+  return m;
+}
+
+/** 중지 버튼: 그때까지의 집중을 남기고 시계를 지운다 */
+function pomoStopByUser() {
+  const d = findActiveDay() || readDay(todayStr());
+  if (d && addPartialFocus(d) > 0) writeDay(d);
+  pomoClear();
+}
+
 // ───────────────────────── 뽀모도로 시계 (서버가 갖는다 — 크롬을 꺼도 알림이 울림) ─────────────────────────
-const POMO_FILE = path.join(ROOT, '.pomo.json'); // 서버가 재시작해도 이어가도록 (git 무시)
+// 서버가 재시작해도 이어가도록 파일에 둔다 (git 무시). 시험용 데이터 폴더(DESK_DATA_DIR)로 띄운 서버는
+// 그 폴더 안의 파일을 써서, 진짜 서버가 돌리고 있는 뽀모도로를 건드리지 않는다.
+const POMO_FILE = process.env.DESK_DATA_DIR ? path.join(DATA_DIR, '.pomo.json') : path.join(ROOT, '.pomo.json');
 let pomo = null;      // { phase: 'focus' | 'break', startedAt, endsAt, total } — 모두 ms
 let pomoTimer = null;
 
@@ -695,7 +724,7 @@ async function handle(req, res) {
         if (!d || !openSessionOf(d)) throw new Error('근무 중일 때만 시작할 수 있습니다');
         pomoStart('focus');
       } else if (body.action === 'stop') {
-        pomoClear();
+        pomoStopByUser();
       } else if (body.action === 'test') {
         notifyOS('출근부 알림 테스트', '이 알림이 보이면 크롬을 꺼도 뽀모도로 알림이 옵니다.');
       } else {

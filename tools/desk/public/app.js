@@ -199,7 +199,7 @@ function renderWork() {
     c.append(
       el('span', { class: 'status-badge closed' }, '퇴근 완료'),
       el('h2', {}, `Day ${S.todayDay.day} — ${S.todayDay.summary}`),
-      el('p', { class: 'muted' }, `오늘 ${fmtHours(S.todayDay.hours)} · ${S.todayDay.sessions.join(', ')}${S.todayDay.pomodoros ? ` · 뽀모도로 ${S.todayDay.pomodoros}개` : ''}`),
+      el('p', { class: 'muted' }, `오늘 ${fmtHours(S.todayDay.hours)} · ${S.todayDay.sessions.join(', ')}${pomoSuffix(S.todayDay)}`),
       renderDayReport(),
       el('div', { class: 'actions' },
         el('button', { class: 'btn', onclick: () => showDay(S.today) }, '오늘 일지 보기'),
@@ -462,10 +462,11 @@ function renderPomodoro() {
   const cfg = pomoCfg();
   const pomo = S.pomo;
   const count = S.active.pomodoros || 0;
+  const partial = S.active.partialMinutes || 0; // 중간에 멈춘 집중(분)
   const box = el('div', { class: 'pomo' });
   const head = (label) => el('div', { class: 'pomo-head' },
     el('span', { class: 'pomo-label' }, label),
-    el('span', { class: 'muted small-text' }, `오늘 ${count}개 완료`),
+    el('span', { class: 'muted small-text' }, `오늘 ${count}개 완료${partial ? ` + ${partial}분` : ''}`),
   );
   if (!pomo) {
     box.append(
@@ -548,7 +549,7 @@ async function doClockOut(e) {
     const d = r.day;
     stamp('퇴근', 'green', {
       message: '오늘도 수고하셨습니다!',
-      sub: `Day ${d.day} · ${fmtDuration(d.workedMinutes)}${d.pomodoros ? ` · 뽀모도로 ${d.pomodoros}개` : ''}`,
+      sub: `Day ${d.day} · ${fmtDuration(d.workedMinutes)}${pomoSuffix(d)}`,
       duration: 3200,
       confetti: true,
     });
@@ -665,7 +666,18 @@ function computeStats() {
   return { todayH: hours[S.today] || 0, week, month, total, days, streak };
 }
 
-const todayPomodoros = () => ((S.todayDay || {}).pomodoros || 0);
+/**
+ * 뽀모도로 표시 글자: 끝까지 채운 개수 + 중간에 멈춘 집중(분). 예: "뽀모도로 2개 + 40분".
+ * 둘 다 없으면 빈 글자. 개수는 끝까지 채운 것만 세고, 멈춘 분은 집중 시간에만 들어간다.
+ */
+const pomoText = (d, unit = '개') => {
+  const n = (d && d.pomodoros) || 0;
+  const m = (d && d.partialMinutes) || 0;
+  if (!n && !m) return '';
+  return `뽀모도로 ${n}${unit}${m ? ` + ${m}분` : ''}`;
+};
+/** 앞에 " · "를 붙인 것 (한 줄 요약 끝에 이어 붙일 때) */
+const pomoSuffix = (d, unit = '개') => (pomoText(d, unit) ? ` · ${pomoText(d, unit)}` : '');
 
 function renderStats() {
   const s = computeStats();
@@ -673,7 +685,7 @@ function renderStats() {
   const row = $('#stats-row');
   row.innerHTML = '';
   row.append(
-    tile('오늘', fmtHours(s.todayH), todayPomodoros() ? `뽀모도로 ${todayPomodoros()}개` : null),
+    tile('오늘', fmtHours(s.todayH), pomoText(S.todayDay) || null),
     tile('이번 주', fmtHours(s.week)),
     tile('이번 달', fmtHours(s.month)),
     tile('연속 출근', `${s.streak}일`),
@@ -769,7 +781,7 @@ function tooltipHtml(ds) {
   return (
     head +
     `<div class="tt-title">${esc(d.summary || '(퇴근 전)')}</div>` +
-    `<div class="tt-hours">${fmtHours(h)}${d.status === 'open' ? ' · 출근 중' : d.status === 'away' ? ' · 부재 중' : ''}${d.pomodoros ? ` · 뽀모도로 ${d.pomodoros}` : ''}</div>` +
+    `<div class="tt-hours">${fmtHours(h)}${d.status === 'open' ? ' · 출근 중' : d.status === 'away' ? ' · 부재 중' : ''}${pomoSuffix(d, '')}</div>` +
     (items.length ? `<ul>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '')
   );
 }
@@ -866,7 +878,7 @@ function showDay(date) {
  */
 function renderDayCard(d) {
   const when = d.status === 'open' ? '출근 중' : d.status === 'away' ? '부재 중' : fmtHours(d.hours);
-  const meta = `${d.date.slice(0, 4)}년 ${fmtDate(d.date)} · Day ${d.day} · ${when}${d.sessions.length ? ' · ' + d.sessions.join(', ') : ''}${d.pomodoros ? ` · 뽀모도로 ${d.pomodoros}개` : ''}`;
+  const meta = `${d.date.slice(0, 4)}년 ${fmtDate(d.date)} · Day ${d.day} · ${when}${d.sessions.length ? ' · ' + d.sessions.join(', ') : ''}${pomoSuffix(d)}`;
   const didRow = (line) => {
     const m = /^\[(완료|진행)\]\s*(.*)$/.exec(line);
     if (!m) return reportRow('•', 'plain', line, '');            // ver01 줄 (표기 없음)
@@ -913,7 +925,7 @@ function renderPeriodCard(p, kind) {
       bars.push({
         label: WEEKDAYS[(i + 1) % 7], hours: d ? d.hours : 0, focus: d ? d.focusHours : 0,
         tip: d
-          ? `<div class="tt-title">${esc(mdShort(date))} (${WEEKDAYS[(i + 1) % 7]}) · Day ${d.day}</div><div class="tt-hours">${fmtHours(d.hours)} · 집중 ${fmtHours(d.focusHours)} (뽀모도로 ${d.pomodoros})</div>${d.summary ? `<div>${esc(d.summary)}</div>` : ''}`
+          ? `<div class="tt-title">${esc(mdShort(date))} (${WEEKDAYS[(i + 1) % 7]}) · Day ${d.day}</div><div class="tt-hours">${fmtHours(d.hours)} · 집중 ${fmtHours(d.focusHours)} (${pomoText(d, '') || '뽀모도로 0'})</div>${d.summary ? `<div>${esc(d.summary)}</div>` : ''}`
           : `<div class="tt-title">${esc(mdShort(date))} (${WEEKDAYS[(i + 1) % 7]})</div><div class="muted">기록 없음</div>`,
       });
     }
@@ -937,7 +949,7 @@ function renderPeriodCard(p, kind) {
         el('span', { class: 'h-title' }, periodStats(w)),
       )));
   return el('div', { class: 'day-card period-card' },
-    el('div', { class: 'muted small-text' }, `${periodLabel(p, kind)} · ${periodStats(p)}${p.pomodoros ? ` · 뽀모도로 ${p.pomodoros}개` : ''}`),
+    el('div', { class: 'muted small-text' }, `${periodLabel(p, kind)} · ${periodStats(p)}${pomoSuffix(p)}`),
     barChart(bars),
     el('div', { class: 'legend-bars' },
       el('span', {}, el('i', { class: 'sw-hours' }), '근무 시간'),

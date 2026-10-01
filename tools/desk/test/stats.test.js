@@ -26,6 +26,22 @@ test('dayRow: 완료·진행·결정 추출, 집중 시간 = 뽀모도로 × 집
   assert.equal(r.dow, 2);          // 화요일
 });
 
+test('dayRow·sum: 중간에 멈춘 집중(분)은 집중 시간에만 더하고 개수에는 넣지 않는다', () => {
+  const stopped = { ...day('2026-10-01', 5, 2), partialMinutes: 40 };
+  const r = stats.dayRow(stopped, 50);
+  assert.equal(r.pomodoros, 2);
+  assert.equal(r.partialMinutes, 40);
+  assert.equal(r.focusHours, 2.3); // 2 × 50분 + 40분 = 140분
+  // 끝까지 채운 것이 하나도 없어도 멈춘 분은 남는다
+  assert.equal(stats.dayRow({ ...day('2026-10-02', 3, 0), partialMinutes: 30 }, 50).focusHours, 0.5);
+  // 옛 파일(값 없음)은 0 으로 본다
+  assert.equal(stats.dayRow(day('2026-09-15', 6, 5), 50).partialMinutes, 0);
+  const { weeks } = stats.aggregate([stopped, { ...day('2026-10-02', 3, 0), partialMinutes: 30 }], 50);
+  assert.equal(weeks[0].pomodoros, 2);
+  assert.equal(weeks[0].partialMinutes, 70);
+  assert.equal(weeks[0].focusHours, 2.8); // 2.3 + 0.5
+});
+
 test('aggregate: 주 묶음(최신순), 합계, 비율, 마지막 날 진행 중', () => {
   const days = [
     day('2026-09-14', 5, 4, ['[완료] a'], ['결정: x']),

@@ -5,8 +5,9 @@
  * 데브로그 요약(server.js summarizeDay 결과)만으로 계산한다. 새 데이터는 없다.
  * 주/월 기록 보기, 금요일 회고 통계, today.md, 건강검진이 **같은 숫자**를 쓰도록 여기 한 곳에서만 계산한다.
  *
- * 입력 day = { date, day, hours, pomodoros, status, title, summary, sessions, did, memo, next }
- *   집중 시간 = 완료한 뽀모도로 수 × 집중 분(설정, 기본 50) — 서버가 센 값이라 정직하다.
+ * 입력 day = { date, day, hours, pomodoros, partialMinutes, status, title, summary, sessions, did, memo, next }
+ *   집중 시간 = 완료한 뽀모도로 수 × 집중 분(설정, 기본 50) + 중간에 멈춘 집중(분) — 서버가 센 값이라 정직하다.
+ *   중간에 멈춘 집중은 개수에는 넣지 않는다 (개수 = 끝까지 채운 것만).
  *   완료 = "한 일"의 `[완료]` 줄 (표기 없는 ver01 줄도 "한 일"이었으므로 완료로 센다), `[진행]` 줄은 제외
  *   결정 = 메모 중 `결정:`으로 시작하는 줄
  */
@@ -43,6 +44,7 @@ function dayRow(d, focusMinutes) {
   const doing = did.filter((l) => DOING_RE.test(l)).map((l) => DOING_RE.exec(l)[1].trim());
   const decisions = (d.memo || []).map((l) => DECISION_RE.exec(l)).filter(Boolean).map((m) => m[1].trim());
   const pomodoros = Number(d.pomodoros) || 0;
+  const partialMinutes = Number(d.partialMinutes) || 0; // 중간에 멈춘 집중(분)
   return {
     date: d.date,
     dow: utc(d.date).getUTCDay(),               // 0=일 … 6=토
@@ -51,7 +53,8 @@ function dayRow(d, focusMinutes) {
     summary: d.summary || '',
     hours: round1(Number(d.hours) || 0),
     pomodoros,
-    focusHours: round1((pomodoros * focusMinutes) / 60),
+    partialMinutes,
+    focusHours: round1((pomodoros * focusMinutes + partialMinutes) / 60),
     done, doing, decisions,
   };
 }
@@ -67,6 +70,7 @@ function sum(rows) {
     focusHours,
     focusRatio: hours > 0 ? Math.min(1, focusHours / hours) : 0,
     pomodoros: rows.reduce((a, r) => a + r.pomodoros, 0),
+    partialMinutes: rows.reduce((a, r) => a + r.partialMinutes, 0),
     done: rows.flatMap((r) => r.done),
     doing: last ? last.doing : [],               // 기간 마지막 근무일에 진행 중으로 남은 것
     decisions: rows.flatMap((r) => r.decisions),
