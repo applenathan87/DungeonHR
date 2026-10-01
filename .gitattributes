@@ -3,5 +3,7 @@
 *.bat     text eol=crlf
 *.cmd     text eol=crlf
 *.vbs     text eol=crlf
+# 한글 알림이 든 vbs 는 UTF-16 이어야 한다 — 저장소에는 UTF-8 로 넣고 꺼낼 때 UTF-16 으로 바꾼다
+tools/desk/pomo-start.vbs text working-tree-encoding=UTF-16LE-BOM eol=crlf
 *.command text eol=lf
 *.sh      text eol=lf
