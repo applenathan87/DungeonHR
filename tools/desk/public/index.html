@@ -24,18 +24,24 @@
   <section class="card" id="work-card" aria-live="polite"></section>
 
   <section class="card" id="todo-card">
-    <h2>할 일</h2>
-    <p id="todo-hint" class="muted small-text" hidden></p>
-    <form id="todo-form" class="row">
-      <input id="todo-input" type="text" placeholder="새 할 일" autocomplete="off">
-      <button type="submit" class="btn small">추가</button>
-    </form>
-    <ul id="todo-list" class="list"></ul>
-    <div id="todo-extra"></div>
-    <details id="done-details">
-      <summary>완료 <span id="done-count" class="muted"></span></summary>
-      <ul id="done-list" class="list done"></ul>
-    </details>
+    <div class="card-head">
+      <h2>할 일 <span id="todo-count" class="muted small-text"></span></h2>
+      <!-- 목록이 길어 아래 카드가 안 보일 때 접는다 (출근 뒤에만 보임 — app.js applyTodoFold) -->
+      <button type="button" id="todo-fold" class="btn small" aria-expanded="true" aria-controls="todo-body" hidden>접기</button>
+    </div>
+    <div id="todo-body">
+      <p id="todo-hint" class="muted small-text" hidden></p>
+      <form id="todo-form" class="row">
+        <input id="todo-input" type="text" placeholder="새 할 일" autocomplete="off">
+        <button type="submit" class="btn small">추가</button>
+      </form>
+      <ul id="todo-list" class="list"></ul>
+      <div id="todo-extra"></div>
+      <details id="done-details">
+        <summary>완료 <span id="done-count" class="muted"></span></summary>
+        <ul id="done-list" class="list done"></ul>
+      </details>
+    </div>
   </section>
 
   <section class="card wide" id="stats-card">

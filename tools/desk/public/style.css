@@ -93,6 +93,8 @@ h1 { font-size: 30px; margin-top: 2px; }
 }
 .card.wide { grid-column: 1 / -1; }
 .card-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+/* 할 일 카드를 접으면 옆 카드 높이만큼 늘어나지 않고 제목 줄만 남는다 */
+#todo-card.folded { align-self: start; }
 @media (max-width: 900px) {
   .grid { grid-template-columns: 1fr; padding-inline: 16px; }
   .top { padding-inline: 16px; }

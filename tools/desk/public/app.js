@@ -149,6 +149,7 @@ function render() {
   renderTop();
   renderWork();
   renderTodos();
+  applyTodoFold();
   renderStats();
   renderHeatmap();
   renderLegend();
@@ -624,6 +625,30 @@ $('#todo-form').addEventListener('submit', async (e) => {
   input.value = '';
   await todo('add', text);
   input.focus();
+});
+
+// ── 할 일 카드 접기 ── 목록이 길면 아래 카드(통계·데브로그)가 화면 밖으로 밀려서, 출근 뒤에는 접을 수 있게 한다.
+// 접은 상태는 이 브라우저에 기억한다. 새 날 출근 전에는 여기서 오늘 할 일을 골라야 하므로 항상 펼쳐 둔다.
+const TODO_FOLD_KEY = 'desk.todoFolded';
+let todoFolded = false;
+try { todoFolded = localStorage.getItem(TODO_FOLD_KEY) === '1'; } catch {}
+
+function applyTodoFold() {
+  const idle = !S.active && !S.todayDay;       // 새 날 출근 전 (대기 목록에서 고르는 화면)
+  const folded = todoFolded && !idle;
+  $('#todo-body').hidden = folded;
+  $('#todo-card').classList.toggle('folded', folded);
+  const btn = $('#todo-fold');
+  btn.hidden = idle;
+  btn.textContent = folded ? '펼치기' : '접기';
+  btn.setAttribute('aria-expanded', String(!folded));
+  $('#todo-count').textContent = S.todos.open.length ? `(${S.todos.open.length})` : '';
+}
+
+$('#todo-fold').addEventListener('click', () => {
+  todoFolded = !todoFolded;
+  try { localStorage.setItem(TODO_FOLD_KEY, todoFolded ? '1' : '0'); } catch {}
+  applyTodoFold();
 });
 
 // 출근 전: 왼쪽 "오늘" 칸의 카드를 오른쪽 카드 위에 놓으면 대기 목록으로 내려간다
