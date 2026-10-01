@@ -920,11 +920,13 @@ function renderDayCard(d) {
     const [text, note = ''] = m[2].split(/\s+—\s+/);
     return m[1] === '완료' ? reportRow('✓', 'done', text, note) : reportRow('◐', 'doing', text, note);
   };
-  const empty = !d.did.length && !d.memo.length && !d.next.length;
+  const recap = d.recap || []; // "하루 요약" 칸 — 퇴근 뒤 Claude 가 파일에 적는다 (없는 날은 칸이 안 보인다)
+  const empty = !d.did.length && !recap.length && !d.memo.length && !d.next.length;
   return el('div', { class: 'day-card' },
     el('div', { class: 'muted small-text' }, meta),
     section('한 일', d.did.map(didRow)),
     section('메모', d.memo.map((t) => reportRow('•', 'plain', t, ''))),
+    section('하루 요약', recap.map((t) => reportRow('•', 'plain recap', t, ''))),
     section('다음에 할 것', d.next.map((t) => reportRow('→', 'planned', t, ''))),
     empty ? el('p', { class: 'muted small-text' }, '기록이 비어 있습니다.') : null,
     el('div', { class: 'muted small-text day-path' }, `파일: production/desk/devlog/${d.date}.md`),

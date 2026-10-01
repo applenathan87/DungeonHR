@@ -295,6 +295,7 @@ function summarizeDay(d) {
     learned: bulletsOf(find('배운 것')),   // ver01 파일용 (지금 폼에는 없음)
     blocked: bulletsOf(find('막힌 것')),
     next: bulletsOf(find('다음에 할 것')),
+    recap: bulletsOf(find('하루 요약')),   // 퇴근 뒤 Claude 가 적는 칸 (폼에는 없음 — 모르는 섹션으로 보존되고, 화면에는 읽어서만 보여 준다)
   };
 }
 

@@ -293,6 +293,7 @@ textarea { resize: vertical; min-height: 64px; }
 .day-section-title { font-size: 12px; color: var(--muted); margin-bottom: 2px; }
 .day-card .list.report li { padding: 5px 2px; }
 .report-row.plain .report-icon { color: var(--muted); }
+.report-row.recap .t { color: var(--ink-2); } /* 하루 요약 — 칸 제목(muted)과 본문(ink) 사이의 밝기 */
 .day-path { margin-top: 10px; }
 
 /* ── 주 · 월 기록 보기 ── */
