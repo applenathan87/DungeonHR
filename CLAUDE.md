@@ -27,11 +27,9 @@ Papers, Please식 심문·판단 + 책상 위 물건(도장·이력서·질문�
 ## 기술
 
 - Unity **6000.5.1f1**(Unity 6.5) + URP · C# · Blender 로우폴리 단일 파이프라인 · UI Toolkit · Addressables · Git(trunk-based)
-- ⚠ `technical-preferences.md`·`coding-standards.md`는 템플릿 시절 파일 — 쿼터뷰·카드 드래그·RPS·틱 전투·덱 셔플 등 **옛 컨셉 잔재는 무시**(M03 코드 착수 전에 정리). 네이밍·금지 패턴·허용 라이브러리·스페셜리스트 라우팅은 유효.
+- ⚠ [technical-preferences.md](.claude/docs/technical-preferences.md)·[coding-standards.md](.claude/docs/coding-standards.md)는 **자동으로 불러오지 않는다** (2026-10-01 — 세션마다 실리는 양을 줄이려고 뺐다). 코드 작업이나 에이전트를 고를 때처럼 필요할 때만 읽는다. 템플릿 시절 파일이라 쿼터뷰·카드 드래그·RPS·틱 전투·덱 셔플 등 **옛 컨셉 잔재는 무시**하고, 네이밍·금지 패턴·허용 라이브러리·스페셜리스트 라우팅만 유효하다. M03 코드 착수 전에 정리한 뒤 다시 자동으로 불러오게 건다. GDD 8섹션 표준은 design/CLAUDE.md에 있다.
 
 @docs/engine-reference/unity/VERSION.md
-@.claude/docs/technical-preferences.md
-@.claude/docs/coding-standards.md
 
 ## 지도
 
