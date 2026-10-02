@@ -351,7 +351,7 @@
 - M04 = 코드: 대리 Lv1 면접 + 하루 흐름·결산·승진·근무 시간·휴식하기 저장 / 기획: 첫 주에 하루와 레벨 숫자·검토와 면접 숫자·검토 · 대리 Lv1 케이스 이틀치 · 대리 Lv2 케이스 시작 · 시간표 퍼즐·밤·미니게임 규칙.
 - M05 = 코드: 대리 Lv2·Lv3 기믹, 사기 부서의 날, 퍼즐·미니게임·밤, 6레벨 연결, 사건 보고서, 엔딩 / 기획: 퍼즐·밤·미니게임 숫자 · 대리 Lv2·Lv3 케이스 · 앞 이야기와 튜토리얼 · 3/10 콘텐츠 확정. 끝날 때 답할 질문 = "6레벨이 끝까지 이어지고, 보통 1시간 안팎에 끝나는가".
 - M06 = 튜토리얼 코드가 M05에 못 들어가면 여기서. M07 = short 버전을 더한다.
-- 마일스톤마다 날 수를 맞춰 보는 판 = [마일스톤 판](https://claude.ai/artifact/JARvDQTPfyCExASkb4JRPw) (2026-10-02, claude.ai — 끌어서 옮기고 날 수를 고칠 수 있다).
+- 마일스톤마다 날 수를 맞춰 보는 판 = 출근부의 「마일스톤 판」 버튼 (2026-10-02 — 끌어서 옮기고 날 수를 고칠 수 있다. 데이터 = [production/milestones/board.json](../../production/milestones/board.json), 쓰는 법 = [tools/desk/README.md](../../tools/desk/README.md) "마일스톤 판". 처음엔 claude.ai 아티팩트였다).
 - **②-나에서 고칠 문서**: systems-index.md(설계 순서 표, 시스템 5의 이름, 다음 단계) · milestones/README.md(표, 데모 10항목) · M01(GDD 항목, 끝날 때 답할 질문) · M02-M05 파일 · todo.md · 루트 CLAUDE.md "지금" 줄 · design/gdd/README.md · game-concept.md("데모 3일"·"15-20분"·"저장 없음"·"영문 동시"·"M6"·"서랍에서 공문"·다음 단계).
 
 ---

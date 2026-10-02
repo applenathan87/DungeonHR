@@ -71,6 +71,7 @@ h1 { font-size: 30px; margin-top: 2px; }
   color: var(--ink-2);
   font-size: 13px;
 }
+.board-link { display: inline-block; margin-bottom: 6px; text-decoration: none; } /* 마일스톤 판으로 가는 버튼 (a 태그라 밑줄을 뗀다) */
 .pill.on { border-color: var(--accent); color: var(--accent); }
 .pill.small { padding: 1px 8px; font-size: 12px; margin: 0; }
 

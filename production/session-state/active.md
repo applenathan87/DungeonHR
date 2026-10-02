@@ -1,7 +1,7 @@
 # Session State — active
 
 > 재시작 시 자동 복구용(SessionStart 훅이 읽음). 최신 상태만 유지.
-> **Last Updated**: 2026-10-02 (Day 2 — M01 기초 진행 중. **살펴보기 ②-가 끝** — 레벨 표와 GDD 순서를 정해 game-flow.md에 적었다. 마일스톤 판을 만들었다. **다음 = 새 세션에서 출근부에 마일스톤 판 붙이기**. 기준 문서 = design/gdd/game-flow.md)
+> **Last Updated**: 2026-10-02 밤 (Day 2 — M01 기초 진행 중. **살펴보기 ②-가 끝** — 레벨 표와 GDD 순서를 정해 game-flow.md에 적었다. 마일스톤 판을 만들고 **출근부에 붙였다**. **다음 = ②-가 마무리(판대로 M01·todo.md 고치기) → ②-나**. 기준 문서 = design/gdd/game-flow.md)
 
 ## ⭐ 2026-10-02 "살펴보기 ②-가" + 마일스톤 판 (가장 먼저 읽는다)
 
@@ -15,16 +15,18 @@
   - GDD 순서 확정 = M01: 하루와 레벨(옛 하루 구조·결산을 넓힘) → 지침 → 판정 + 승진·경제·면접의 규칙 쪽 / M02: 책상 위 물건 다루기 → 케이스 양식(가운데) / M04: 시간표 퍼즐·밤·미니게임. **규칙 쪽(개요·느낄 것·상세 규칙·관계)을 먼저, 숫자 쪽(공식·예외·조절값·통과 기준)과 검토는 그 코드 직전.** 판정의 서류 부분만 M01에 숫자까지.
   - 새 항목 = B18(요일 — "화·목은 미니게임" 같은 사용자 아이디어, 더 키움), B19(준비한 후보가 바닥나는 날), B20(새 카드가 무엇인가). B14(앞 이야기·튜토리얼) = M05.
 - **마일스톤 판**: 마일스톤 7개 × 아트·기획·코드를 한 화면에 놓고, 카드를 끌어 옮기고 날 수를 고치면 갈래마다 "들어간 날 / 마일스톤 날 수"와 막대(85% 넘으면 노랑, 100% 넘으면 빨강)가 바뀐다. 카드마다 회색 설명이 있다(사용자가 이 설명을 좋아함). M02 이후 날 수는 Claude 어림(점선 테두리).
-  - 지금 있는 곳 = claude.ai 아티팩트 https://claude.ai/artifact/JARvDQTPfyCExASkb4JRPw (현재 계정 소유, 페이지가 스스로 새 판으로 저장하는 방식).
-  - 원본 = [production/milestones/board.html](../milestones/board.html). 판 데이터는 파일 안 `<script type="application/json" id="state">`의 JSON(milestones, cards: id·m·l·t·d·est·from·n).
-- **10/4에 사용자가 Claude 계정을 바꾼다** — 아티팩트는 새 계정에서 안 열릴 가능성이 크다. 그래서 **판을 출근부에 붙이기로 했다** (사용자 결정, 10/2).
+  - **지금 있는 곳 = 출근부 위쪽 「마일스톤 판」 버튼** (10/2 밤에 옮김 — 10/4에 사용자가 Claude 계정을 바꾸면 아티팩트를 못 열 수 있어서). 데이터 = [production/milestones/board.json](../milestones/board.json) (마일스톤·카드 하나가 한 줄 — 카드 칸 id·m·l·t·d·est·from·n). 쓰는 법 = [tools/desk/README.md](../../tools/desk/README.md) "마일스톤 판". 퇴근 때 출근부 기록과 같이 커밋된다.
+  - 판 화면은 카드를 옮기고 날 수만 고친다. 카드·마일스톤을 더하거나 빼는 일은 Claude가 board.json을 직접 고친다(판을 열어 둔 채 파일을 고치면 판 쪽 저장이 거절되니 사용자에게 다시 불러오라고 알린다). M01에서 끝낸 항목 표시는 아직 없다.
+  - 색·글꼴은 아티팩트 그대로(사용자 결정 — 밝게/어둡게는 윈도우 설정을 따른다, 구글 글꼴). 저장은 버튼만(Ctrl+S 없음).
+  - 옛 아티팩트 https://claude.ai/artifact/JARvDQTPfyCExASkb4JRPw 는 저장한 적이 없어 board.json과 내용이 같다(10/2 확인). board.html은 사용자 확인 후 지웠다(git 기록에 있음).
 - **다음 순서**:
-  1. **새 세션: 출근부에 마일스톤 판 붙이기** (코드 잡무, 반나절-하루. 9/30 "출근부 개선 종료"의 예외). 방향(Claude 제안, 사용자 동의): 데이터 = `production/milestones/board.json`(board.html의 state JSON을 옮김) · 화면 = tools/desk/public에 판 화면 + 출근부에서 판으로 가는 버튼 · 서버에 판 읽기/저장 주소(server.js는 `p === '/api/...'` 식으로 주소를 나눈다) · 끌어 옮기기·날 수 고치기·합계 막대·「여기로」 버튼·글로 복사는 board.html 코드를 옮겨 쓰고, 아티팩트 전용 코드(`claude.use('artifact')`, publish, RESET, buildDoc)는 뺀다 · M01에서 끝낸 항목 표시는 이번에 넣지 않는다 · tools/desk/README.md 고치기. 다 되면 board.html은 지우거나 참고로 남길지 사용자에게 묻는다.
-  2. 10/4 전에 아티팩트 판에서 저장한 것이 있으면 board.json에 옮긴다(Artifact read로 state JSON을 읽는다).
-  3. **②-가의 남은 것**: 사용자가 판을 다 본 뒤 M01의 GDD 항목과 todo.md를 판 모습대로 고친다(game-flow 7번 "마일스톤 방향"). M01 기획 약 13일치, 남는 약 10일은 10/14 점검까지 여유.
-  4. **②-나**: game-flow 7번 끝 "②-나에서 고칠 문서" 목록 전부(승인 받고). 끝나면 game-flow 상태를 "검토함"으로.
+  0. **내일 첫 이야기 = 마일스톤의 블렌더 모델링을 어떻게 할지** (사용자, 10/2 밤). 사용자가 정한 것: class101 블렌더 강의는 ③의 텍스트 액자와 책상까지만 하고 멈춘다(우리 스타일과 맞지 않고 진도가 느리다). Grant Abbitt 던전 문 모델링·스컬핑 강의로 넘어갔다. 앞으로는 필요한 기능을 그때그때 찾아 배우고, 강의 하나를 처음부터 끝까지 듣기보다 스타일라이즈드 모델링·스컬핑 강의를 여러 개 들으며 작업을 쌓는 쪽이 중요하다. → 같이 볼 것: 판(board.json)과 M01의 블렌더 강의 ④⑤⑥ 카드, todo.md의 블렌더 강의 항목, docs/pipeline/art-courses.md의 배우는 순서, 그 대신 들을 스타일라이즈드 강의 후보.
+  - 같이 꺼낼 것 (10/2 데브로그 메모, 사용자): "GDD를 어떻게 써야 할지 고민이 커지고 있다. 문서만 방대해지는 것 같다." — 규칙 쪽 GDD(하루와 레벨 → 지침 → 판정)를 쓰기 전에 쓰는 방식(분량·8섹션을 어디까지)을 같이 정한다.
+  - 던전 문 스컬핑 ①은 진행 중 — 1/2 듣고 모델링 끝, 스컬핑 남음.
+  1. **②-가의 남은 것**: 사용자가 판을 다 본 뒤(옮길 카드가 있으면 판에서 옮기고 저장) M01의 GDD 항목과 todo.md를 판 모습대로 고친다(game-flow 7번 "마일스톤 방향"). M01 기획 약 13일치, 남는 약 10일은 10/14 점검까지 여유.
+  2. **②-나**: game-flow 7번 끝 "②-나에서 고칠 문서" 목록 전부(승인 받고, 새 세션). 끝나면 game-flow 상태를 "검토함"으로. 출근부의 「기획: 전체 흐름 살펴보기 ②」는 진행 중(②-가 끝, ②-나 남음).
 - **말 쓰기** (10/2 사용자): 대화에서 범위는 하이픈으로 짧게(3-4분, Lv1-3, M03-M05). 물결표는 VSCode 채팅에서 취소선이 되므로 쓰지 않는다. 기억(feedback_writing_style)에 적었다.
-- 이 세션에서 고친 파일 = design/gdd/game-flow.md · production/milestones/board.html(새 파일) · 이 파일 (커밋 전). 기억 = feedback_writing_style.md.
+- 10/2 밤 세션에서 고친 파일 (커밋 전, board.json은 퇴근 커밋에 들어감) = tools/desk/ server.js · board.js(새) · test/board.test.js(새) · public/board.html·board.css·board-app.js(새) · public/index.html · public/style.css · README.md / production/milestones/board.json(새) · board.html(지움) / design/gdd/game-flow.md(354줄 링크) / 이 파일. 바탕화면에 「출근부 끄기」 바로가기를 만들었다.
 
 ## 2026-10-01 "전체 흐름 살펴보기 ①"에서 정한 것 (game-flow.md에 반영함 — 아래 "다음 = ②-가"는 10/2에 끝났다)
 

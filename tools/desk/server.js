@@ -17,6 +17,7 @@ const path = require('path');
 const { execFile } = require('child_process');
 const todoMd = require('./todo'); // todo.md 파서/직렬화 (모르는 줄은 보존)
 const stats = require('./stats');  // 주·월 집계 (기록 보기·회고 통계·today.md 가 같은 숫자를 쓴다)
+const boardFile = require('./board'); // 마일스톤 판 파일 (board.json) 읽기·쓰기·검사
 
 // ───────────────────────── 파일 읽기/쓰기 도우미 ─────────────────────────
 /** UTF-8 로 읽되, 메모장 등이 붙이는 BOM(맨 앞 보이지 않는 글자)은 뗀다 — 안 떼면 frontmatter 판정이 깨진다 */
@@ -49,6 +50,7 @@ const DEFAULTS = {
   heatLevels: [1, 2, 4, 6], // 색 단계 경계(시간). 경계 개수 + 1 = 단계 수
   maxPick: 3,
   pomodoro: { focus: 50, break: 10 }, // 뽀모도로 집중/휴식 (분)
+  boardFile: '../../production/milestones/board.json', // 마일스톤 판 데이터 (tools/desk 기준)
 };
 
 function loadConfig() {
@@ -67,6 +69,10 @@ const DATA_DIR = process.env.DESK_DATA_DIR
 const DEVLOG_DIR = path.join(DATA_DIR, 'devlog');
 const TODO_PATH = path.join(DATA_DIR, 'todo.md');
 const PUBLIC_DIR = path.join(ROOT, 'public');
+// 시험용 데이터 폴더로 띄운 서버는 그 폴더 안의 판을 쓴다 — 진짜 판을 건드리지 않게 (POMO_FILE 과 같은 방식)
+const BOARD_PATH = process.env.DESK_DATA_DIR
+  ? path.join(DATA_DIR, 'board.json')
+  : path.resolve(ROOT, config.boardFile);
 const NO_OPEN = process.argv.includes('--no-open');
 const NO_GIT = process.argv.includes('--no-git') || process.env.DESK_NO_GIT === '1';
 
@@ -575,7 +581,33 @@ function notifyOS(title, body) {
   }
 }
 
-// ───────────────────────── git (데이터 폴더만 커밋 → 푸시) ─────────────────────────
+// ───────────────────────── 마일스톤 판 (board.json) ─────────────────────────
+// 화면(board.html)이 판을 받아 가고, 카드를 옮기거나 날 수를 고친 뒤 저장한다.
+// 받아 갈 때 파일 글의 지문(version)을 같이 주고, 저장할 때 그 지문을 돌려받는다.
+// 그사이 파일이 바뀌었으면(손·Claude 가 고침, 맥북에서 pull) 덮어쓰지 않고 거절한다.
+
+/** { board, version } — 파일이 없거나 깨졌으면 오류 */
+function readBoard() {
+  if (!fs.existsSync(BOARD_PATH)) throw new Error('판 파일이 없습니다: ' + BOARD_PATH);
+  const text = readText(BOARD_PATH);
+  return { board: boardFile.parse(text), version: boardFile.version(text) };
+}
+
+/** 카드만 바꿔 저장. 지문이 다르면 code=409 오류 (그때의 판을 같이 실어 보낸다) */
+function saveBoard(cards, version) {
+  const cur = readBoard();
+  if (version !== cur.version) {
+    const e = new Error('판을 연 뒤 다른 곳에서 파일이 바뀌었습니다');
+    e.code = 409;
+    throw e;
+  }
+  const next = boardFile.withCards(cur.board, cards, `${todayStr()} ${timeStr()}`);
+  const text = boardFile.serialize(next);
+  writeFileAtomic(BOARD_PATH, text);
+  return { board: next, version: boardFile.version(text) };
+}
+
+// ───────────────────────── git (데이터 폴더 + 마일스톤 판만 커밋 → 푸시) ─────────────────────────
 function git(args, cwd) {
   return new Promise((resolve) => {
     execFile('git', args, { cwd, windowsHide: true }, (err, stdout, stderr) => {
@@ -590,12 +622,16 @@ async function pushData(message) {
   const top = await git(['rev-parse', '--show-toplevel'], DATA_DIR);
   if (!top.ok) return { ok: false, error: '데이터 폴더가 git 저장소 안에 없습니다: ' + top.err };
   const repo = top.out;
-  const rel = path.relative(repo, DATA_DIR).split(path.sep).join('/') || '.';
-  const add = await git(['add', '-A', '--', rel], repo);
+  const toRel = (p) => path.relative(repo, p).split(path.sep).join('/');
+  const rels = [toRel(DATA_DIR) || '.'];
+  // 마일스톤 판도 같이 올린다 — 맥북에서도 같은 판이 보이게 (2026-10-02). 저장소 밖이거나 데이터 폴더 안이면 뺀다
+  const boardRel = toRel(BOARD_PATH);
+  if (fs.existsSync(BOARD_PATH) && !boardRel.startsWith('..') && !BOARD_PATH.startsWith(DATA_DIR + path.sep)) rels.push(boardRel);
+  const add = await git(['add', '-A', '--', ...rels], repo);
   if (!add.ok) return { ok: false, error: add.err };
-  const status = await git(['status', '--porcelain', '--', rel], repo);
+  const status = await git(['status', '--porcelain', '--', ...rels], repo);
   if (!status.out) return { ok: true, nothing: true };
-  const commit = await git(['commit', '-m', message, '--', rel], repo);
+  const commit = await git(['commit', '-m', message, '--', ...rels], repo);
   if (!commit.ok) return { ok: false, error: commit.err };
   const push = await git(['push'], repo);
   return push.ok ? { ok: true, pushed: true } : { ok: true, pushed: false, error: push.err };
@@ -738,6 +774,21 @@ async function handle(req, res) {
       const body = await readBody(req);
       todoAction(body.action, body.text, { status: body.status, note: body.note });
       return json(res, { ok: true, state: stateJson() });
+    }
+
+    if (req.method === 'GET' && p === '/api/board') {
+      // file = 화면 위에 보여 줄 판 파일 위치 (저장소 기준. 저장소 밖이면 전체 경로)
+      const rel = path.relative(path.resolve(ROOT, '../..'), BOARD_PATH).split(path.sep).join('/');
+      return json(res, { ...readBoard(), file: rel.startsWith('..') ? BOARD_PATH : rel });
+    }
+
+    if (req.method === 'POST' && p === '/api/board') {
+      const body = await readBody(req);
+      try {
+        return json(res, { ok: true, ...saveBoard(body.cards, body.version) });
+      } catch (e) {
+        return fail(res, e, e.code === 409 ? 409 : 400);
+      }
     }
 
     if (req.method === 'GET' && !p.startsWith('/api/')) return serveStatic(res, p);
