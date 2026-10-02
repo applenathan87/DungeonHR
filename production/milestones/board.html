@@ -1,0 +1,335 @@
+<title>마왕성 인사팀 마일스톤</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Myeongjo:wght@700;800&display=swap">
+<style id="css">
+/* 레이아웃: 마일스톤 7개를 가로로, 갈래(아트·기획·코드)를 가로 띠로 맞춘 일정판. 카드는 끌어서 옮긴다 */
+:root{
+  --bg:#e9ece6; --panel:#f6f7f3; --card:#ffffff; --ink:#1c2330; --muted:#5b6470; --line:#c7ccc2;
+  --art:#9a5a16; --plan:#2a4c86; --code:#2b7360;
+  --ok:#3b7647; --tight:#a8730f; --over:#b2261d;
+  --display:"Nanum Myeongjo","Batang",serif;
+  --body:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#121719; --panel:#1a2125; --card:#20292e; --ink:#e2e6e0; --muted:#98a1a7; --line:#2f393e;
+    --art:#dd9a52; --plan:#86a8e4; --code:#62c2a0;
+    --ok:#6dbf7e; --tight:#e2ae48; --over:#f06a60; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121719; --panel:#1a2125; --card:#20292e; --ink:#e2e6e0; --muted:#98a1a7; --line:#2f393e;
+  --art:#dd9a52; --plan:#86a8e4; --code:#62c2a0;
+  --ok:#6dbf7e; --tight:#e2ae48; --over:#f06a60; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.45;padding-block:20px 40px;padding-inline:16px}
+.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;margin-bottom:14px}
+.top h1{font-family:var(--display);font-weight:800;font-size:26px;margin:0;text-wrap:balance;letter-spacing:-.01em}
+.top .sub{margin:4px 0 0;color:var(--muted);font-size:13px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.controls button{font:inherit;font-size:13px;padding:6px 12px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer}
+.controls button.primary{background:var(--plan);border-color:var(--plan);color:var(--card);font-weight:600}
+.controls button:disabled{opacity:.45;cursor:default}
+.status{font-size:12.5px;color:var(--muted);min-width:0}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--muted);margin:0 0 14px;padding:0;list-style:none}
+.legend b{color:var(--ink);font-weight:600}
+.board-wrap{overflow-x:auto;padding-bottom:8px}
+.board{display:grid;grid-template-columns:repeat(7,minmax(232px,1fr));gap:10px 10px;min-width:max-content}
+.mhead{padding:10px 10px 8px;border-bottom:2px solid var(--ink)}
+.mhead .mid{font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.mhead h2{font-family:var(--display);font-size:18px;font-weight:800;margin:2px 0 4px;text-wrap:balance}
+.mhead .range{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums}
+.mhead .split{font-size:12px;color:var(--muted);margin-top:2px}
+.mhead .q{margin:6px 0 0;font-size:12.5px}
+.mhead .q::before{content:"끝날 때 · ";color:var(--muted)}
+.mhead .mnote{margin:4px 0 0;font-size:12px;color:var(--muted)}
+.cell{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px;min-width:0;display:flex;flex-direction:column;gap:6px}
+.cell.lane-a{--lane:var(--art)} .cell.lane-p{--lane:var(--plan)} .cell.lane-c{--lane:var(--code)}
+.cell.over-target{border-color:var(--lane);box-shadow:0 0 0 1px var(--lane) inset}
+.lhead{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.lname{font-weight:600;color:var(--lane);font-size:13px;letter-spacing:.04em}
+.load{font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.load b{font-weight:500;color:var(--ink)}
+.load.tight b{color:var(--tight)} .load.over b{color:var(--over)}
+.load.over::after{content:" 넘침";font-family:var(--body);color:var(--over);font-weight:600}
+.meter{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--ok)}
+.meter.tight i{background:var(--tight)} .meter.over i{background:var(--over)}
+.here{font:inherit;font-size:11.5px;padding:1px 8px;border-radius:10px;border:1px solid var(--lane);background:transparent;color:var(--lane);cursor:pointer}
+.cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px;min-height:28px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:5px;padding:6px 6px 6px 8px;display:flex;gap:8px;align-items:flex-start;justify-content:space-between;cursor:grab;user-select:none}
+.card.est{border-style:dashed}
+.card.changed{border-color:var(--tight);border-style:solid;box-shadow:0 0 0 1px var(--tight) inset}
+.card.sel{border-color:var(--lane);border-style:solid;box-shadow:0 0 0 2px var(--lane) inset}
+.card.dragging{opacity:.4}
+.card .t{min-width:0;font-size:13px;overflow-wrap:anywhere}
+.card .from{font-family:var(--mono);font-size:11px;color:var(--lane);white-space:nowrap}
+.card .cn{display:block;font-size:11.5px;color:var(--muted)}
+.card .d,.card .d-in{flex:none;font-family:var(--mono);font-size:12px;font-variant-numeric:tabular-nums;min-width:30px;text-align:center;padding:1px 6px;border-radius:4px;border:1px solid transparent;background:var(--bg);color:var(--ink);cursor:pointer}
+.card .d:hover{border-color:var(--lane)}
+.card .d-in{width:56px;border-color:var(--lane)}
+.drop-mark{height:3px;border-radius:2px;background:var(--lane);list-style:none}
+.foot{margin-top:16px;font-size:12.5px;color:var(--muted);max-width:70ch}
+.foot p{margin:4px 0}
+#textout{width:100%;min-height:160px;margin-top:10px;font-family:var(--mono);font-size:12px;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px}
+button:focus-visible,.card:focus-visible{outline:2px solid var(--plan);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+<main id="root"></main>
+<script type="application/json" id="state">{"savedAt":null,"milestones":[{"id":"M01","name":"기초","range":"10/1–10/28","days":23,"dn":"남은 날","split":"아트 3 · 기획 2","q":"책상 구도가 정해졌는가. 정답 규칙이 정해졌는가","note":"끝냄: 블렌더 세팅, 강의 ①②, 살펴보기 ① · 점검 10/14"},{"id":"M02","name":"룸 룩 테스트","range":"10/29–12/2","days":30,"split":"아트 3-4 · 기획 1-2","q":"이 룩이 먹히는가. 에셋 하나에 몇 시간이 드는가"},{"id":"M03","name":"서류 심사","range":"12/3–1/6","days":30,"dn":"연말 포함","split":"코드 2 · 기획 2 · 아트 1","q":"도장이 계속 찍고 싶은가"},{"id":"M04","name":"면접과 하루","range":"1/7–2/10","days":30,"dn":"설 포함","split":"코드 2 · 기획 2 · 아트 1","q":"간파했을 때 「오?」가 있는가"},{"id":"M05","name":"6레벨 연결","range":"2/11–3/10","days":24,"split":"코드 3 · 기획 1 · 아트 1","q":"6레벨이 끝까지 이어지고, 보통 1시간 안팎에 끝나는가"},{"id":"M06","name":"아트·사운드 마무리","range":"3/11–3/31","days":18,"q":"남에게 보여줄 수 있는가"},{"id":"M07","name":"다듬기와 제출","range":"4/1–4/15","days":13,"q":"제출"}],"cards":[{"id":"a01","m":"M01","l":"a","t":"블렌더 강의 ③","d":1,"n":"텍스트 액자와 책상, Sky·HDRI 셋업 (98분). Sky·HDRI는 보기만 한다"},{"id":"a02","m":"M01","l":"a","t":"블렌더 강의 ④","d":1,"n":"Light·Material, Voronoi 노드와 테이블 (95분). Light·Material은 보기만 한다"},{"id":"a03","m":"M01","l":"a","t":"블렌더 강의 ⑤","d":1,"n":"Boolean 창문, Array 블라인드, Extrude·Bevel 캐비넷, Knife 탁상액자 (92분)"},{"id":"a04","m":"M01","l":"a","t":"블렌더 강의 ⑥","d":1,"n":"옷걸이와 모자, 서류뭉치 버킷, 커피잔 (69분). class101은 여기까지"},{"id":"a05","m":"M01","l":"a","t":"던전 문 스컬핑 ①","d":2,"n":"Grant Abbitt 1편 기본 메시 + 2편 돌. 결과물은 artwork/_study/"},{"id":"a06","m":"M01","l":"a","t":"던전 문 스컬핑 ②","d":2,"n":"3편 나무 + 4편 해골 + 5편 금속. 끝 = 스컬핑한 던전 문 하나"},{"id":"a07","m":"M01","l":"a","t":"페인터 설치와 기초 강의","d":3,"est":true,"n":"스팀에서 Substance Painter 설치, ZBMAND 한 달. 「섭페 11.1 완전 기초 가이드」부터"},{"id":"a08","m":"M01","l":"a","t":"텍스처 강의","d":3,"est":true,"n":"Adobe 공식·안콜3D 영상을 보고 강의를 고른다. 연습 대상 = 던전 문. M02까지 이어짐"},{"id":"a09","m":"M01","l":"a","t":"면접실 구도 짜기 ①","d":2,"n":"사용자가 직접. 책상·의자·벽·바닥을 상자 같은 기본 도형으로, 실제 크기(미터)대로"},{"id":"a10","m":"M01","l":"a","t":"면접실 구도 짜기 ②","d":2,"n":"책상 위 물건 6종·깃펜·잡소품 자리, 촛불 위치, 지원자 자리, 카메라 위치"},{"id":"a11","m":"M01","l":"a","t":"구도 평가와 배치","d":1,"n":"짠 구도 화면을 Claude에게 보여 주고 물건 배치를 같이 다듬는다"},{"id":"a12","m":"M01","l":"a","t":"구도를 유니티로 내보내기","d":1,"n":"FBX로 내보내 크기와 방향이 유니티에서 맞는지 확인"},{"id":"p01","m":"M01","l":"p","t":"전체 흐름 살펴보기 ②-가","d":1,"n":"지금 하는 중. 레벨 표·묶는 곳·시간·케이스 분량·GDD 순서를 정해 game-flow.md에 적기"},{"id":"p02","m":"M01","l":"p","t":"전체 흐름 살펴보기 ②-나","d":1,"n":"정한 것을 다른 문서에 반영. 「데모 3일」 표기, systems-index, 마일스톤 파일, CLAUDE.md, game-concept"},{"id":"p03","m":"M01","l":"p","t":"하루와 레벨 규칙 ①","d":1,"n":"개요·플레이어가 느낄 것 + 하루의 순서와 레벨 표"},{"id":"p04","m":"M01","l":"p","t":"하루와 레벨 규칙 ②","d":1,"n":"승진 규칙과 머무는 날, 근무 시간, 결산, 휴식하기 저장, 엔딩, 다른 시스템과의 관계"},{"id":"p05","m":"M01","l":"p","t":"지침 규칙 ①","d":1,"n":"정답 규칙. 같은 지원자라도 그날 지침에 따라 정답이 달라지는 방식"},{"id":"p06","m":"M01","l":"p","t":"지침 규칙 ②","d":1,"n":"지침이 쌓이고 바뀌고 사라지는 규칙, 레벨마다 나오는 공문, 다른 시스템과의 관계"},{"id":"p07","m":"M01","l":"p","t":"판정 ①","d":1,"n":"개요·플레이어가 느낄 것 + 안 정한 것 정리(보류 도장, 능력치 창, 끌어서 다시 놓기)"},{"id":"p08","m":"M01","l":"p","t":"판정 ②","d":1,"n":"깃펜으로 V·X 긋기, 근거 최소 1개, 도장, 지침의 정답 규칙과 잇기"},{"id":"p09","m":"M01","l":"p","t":"판정 ③","d":1,"n":"3단 채점, 서류 기믹 자리. 서류 부분은 숫자까지 쓴다(7월에 해 봄)"},{"id":"p10","m":"M01","l":"p","t":"승진·경제 규칙","d":1,"from":"← M03","n":"공적, 직급, 승진 보상, 일급과 골드의 규칙만. 숫자는 M03"},{"id":"p11","m":"M01","l":"p","t":"면접 규칙 ①","d":1,"from":"← M03","n":"카드 던지기, 포인트, 답변과 반응. 진술 긋기의 템포(B15)를 다시 본다"},{"id":"p12","m":"M01","l":"p","t":"면접 규칙 ②","d":1,"from":"← M03","n":"함정 질문의 대가, 새 카드를 얻는 세 길, 면접 기믹 자리"},{"id":"p13","m":"M01","l":"p","t":"옛 문서 고치기","d":1,"n":"mvp-design 14번 절, concept/_index, onboarding-brief, desk ROADMAP"},{"id":"c01","m":"M01","l":"c","t":"game 폴더 만들기","d":1,"n":"Unity Hub에서 사용자가 직접(6000.5.1f1 + URP). 만든 직후 game/CLAUDE.md"},{"id":"c02","m":"M01","l":"c","t":"룩 확인용 씬 만들기","d":2,"n":"LookTest 씬. 구도 FBX, 고정 카메라, 임시 촛불 조명, 스크린샷 두 크기"},{"id":"c03","m":"M01","l":"c","t":"구도 확정","d":1,"n":"카메라 화면 2-3가지를 비교해 하나로. design/art/look-test/에 기록"},{"id":"a13","m":"M02","l":"a","t":"텍스처 강의 이어 듣기","d":4,"est":true,"n":"M01에서 시작한 스타일라이즈드 텍스처 강의"},{"id":"a14","m":"M02","l":"a","t":"도장 하나로 먼저 확인","d":7,"est":true,"n":"11/11. 도장 하나를 텍스처까지 끝내 유니티 촛불 아래에서 본다. 스컬핑해서 굽기와 색으로만 칠하기 비교"},{"id":"a15","m":"M02","l":"a","t":"면접실 전체 모델링·텍스처","d":12,"est":true,"n":"책상, 물건 6종, 깃펜·잉크, 잡소품, 벽·창·촛대, 지원자 의자"},{"id":"a16","m":"M02","l":"a","t":"캐릭터 스컬핑 강의","d":3,"est":true,"n":"고블린 전에 고른다. 후보 = Stylized Game Asset Creation"},{"id":"a17","m":"M02","l":"a","t":"고블린 기본형 1체","d":5,"est":true,"n":"가만히 선 자세. 뼈대 넣기와 애니메이션은 없다"},{"id":"p14","m":"M02","l":"p","t":"책상 위 물건 다루기 규칙","d":2,"est":true,"n":"집기·끌기·놓기·들어 읽기, 도장과 카드의 손맛. 면접실을 만들면서 쓴다"},{"id":"p15","m":"M02","l":"p","t":"고블린 설정 메모","d":1,"est":true,"n":"모델링 전에 한 쪽. 생김새·성격·자세"},{"id":"p16","m":"M02","l":"p","t":"아트 기준 문서 다시 쓰기","d":3,"est":true,"n":"룩을 정한 뒤. 아트 바이블·ADR-002·에셋 체크리스트(지금은 옛 내용)"},{"id":"p17","m":"M02","l":"p","t":"케이스 데이터 양식","d":2,"est":true,"n":"지원자·공문·카드·대사를 적는 파일 양식, 후보에서 뽑는 규칙, 스트링 키. 맨 끝에서 가운데로 당김"},{"id":"p18","m":"M02","l":"p","t":"사원 단계 케이스 쓰기 시작","d":6,"est":true,"from":"← M03","n":"7월 서류 34건에서 골라 새 정답 규칙에 맞게 고쳐 쓴다. 첫 건 「물컹이」"},{"id":"c04","m":"M02","l":"c","t":"촛불 조명과 화면 효과","d":4,"est":true,"n":"LookTest 씬. 빛 번짐, 초점 흐림, 가장자리 어둡게"},{"id":"c05","m":"M02","l":"c","t":"스크린샷과 룩 결정","d":1,"est":true,"n":"룩 유지·조정·변경 한 줄 + 에셋마다 든 시간 표"},{"id":"a18","m":"M03","l":"a","t":"룩 테스트 조정 반영","d":3,"est":true,"n":"M02 룩 결정에서 나온 「조정」을 반영"},{"id":"a19","m":"M03","l":"a","t":"소품 보강","d":4,"est":true,"n":"모자란 소품. 주 1-2회로 몰아서 해도 된다"},{"id":"p19","m":"M03","l":"p","t":"지침 숫자 쪽과 검토","d":2,"est":true,"from":"← M01","n":"공식·예외 상황·조절값·통과 기준 + 검토. 서류 코드 직전"},{"id":"p20","m":"M03","l":"p","t":"판정 검토","d":1,"est":true,"from":"← M01","n":"/design-review. 서류 코드 직전"},{"id":"p21","m":"M03","l":"p","t":"승진·경제 숫자 쪽","d":1,"est":true,"n":"공적 공식과 문턱, 일급, 상점 값"},{"id":"p22","m":"M03","l":"p","t":"사원 단계 케이스 마무리","d":10,"est":true,"n":"레벨 셋 × 이틀치, 24-30건. 게임이 읽는 실제 데이터 파일로"},{"id":"c06","m":"M03","l":"c","t":"코드 규칙 정하기와 옛 설정 정리","d":2,"est":true,"n":"테스트·작업 번호·ADR을 어디까지 할지, technical-preferences 정리, game/CLAUDE.md 제한 풀기"},{"id":"c07","m":"M03","l":"c","t":"물건 집기·끌기·놓기·들어 읽기","d":6,"est":true,"n":"책상 위 물건 다루기. 이력서와 공문은 따로 집는다"},{"id":"c08","m":"M03","l":"c","t":"도장 쾅","d":3,"est":true,"n":"잉크 자국, 화면 흔들림, 임시 효과음"},{"id":"c09","m":"M03","l":"c","t":"이력서·공문을 데이터 파일에서 읽기","d":4,"est":true,"n":"케이스 파일과 스트링 테이블에서 읽어 보여 주기"},{"id":"c10","m":"M03","l":"c","t":"깃펜 근거 긋기","d":3,"est":true,"n":"왼쪽 클릭 V(합격 쪽 근거), 오른쪽 클릭 X(탈락 쪽 근거)"},{"id":"c11","m":"M03","l":"c","t":"판정과 3단 채점","d":3,"est":true,"n":"합격·불합격, 근거와 방향, 결정적 단서"},{"id":"c12","m":"M03","l":"c","t":"서류 기믹","d":3,"est":true,"n":"후보 촛불. 사원 Lv2 자리"},{"id":"c13","m":"M03","l":"c","t":"레벨 임시 버튼","d":1,"est":true,"n":"결산·승진이 아직 없어 사원 Lv1-3을 버튼으로 바꿔 가며 확인"},{"id":"a20","m":"M04","l":"a","t":"고블린 반응 2종","d":6,"est":true,"n":"긴장·안도. 크기와 위치를 살짝 움직이는 짧은 애니메이션과 표정 바꾸기"},{"id":"p23","m":"M04","l":"p","t":"하루와 레벨 숫자 쪽과 검토","d":2,"est":true,"from":"← M01","n":"근무 시간 길이, 공적 문턱, 엔딩 등급 공식 + 검토. 하루 흐름 코드 직전"},{"id":"p24","m":"M04","l":"p","t":"면접 숫자 쪽과 검토","d":2,"est":true,"from":"← M03","n":"포인트, 카드 값, 함정 질문의 대가 + 검토. 면접 코드 직전"},{"id":"p25","m":"M04","l":"p","t":"대리 Lv1 케이스 이틀치","d":5,"est":true,"n":"4-6명. 7월 면접 16건에서 고쳐 쓴다. 카드 4종 답변 대사, 반응, 진술 줄"},{"id":"p26","m":"M04","l":"p","t":"대리 Lv2 케이스 시작","d":3,"est":true,"from":"← M05","n":"면접 기믹 ①을 쓰는 케이스"},{"id":"p27","m":"M04","l":"p","t":"시간표 퍼즐 규칙","d":2,"est":true,"n":"수정구 통화 → 달력 6칸 → 도장. 7월에 해 봤다"},{"id":"p28","m":"M04","l":"p","t":"밤 파트 규칙","d":2,"est":true,"n":"지도 화면, 일급, 까마귀 상점, 승진한 밤의 인물"},{"id":"p29","m":"M04","l":"p","t":"미니게임 규칙","d":2,"est":true,"n":"후보 = 왼쪽·오른쪽 버튼으로 빠르게 분류. 작은 프로토타입을 만든 뒤에 쓴다"},{"id":"p30","m":"M04","l":"p","t":"GDD 전체 검토","d":2,"est":true,"n":"/review-all-gdds. GDD끼리 어긋난 곳 찾기"},{"id":"c14","m":"M04","l":"c","t":"대리 Lv1 면접","d":8,"est":true,"n":"카드 던지기, 포인트, 답변 자막, 반응, 진술 줄"},{"id":"c15","m":"M04","l":"c","t":"몬스터 등장","d":2,"est":true,"n":"책상 너머에 나타나 인사하고, 도장 뒤에 퇴장"},{"id":"c16","m":"M04","l":"c","t":"하루 흐름","d":4,"est":true,"n":"출근 → 공문 → 업무 → 결산"},{"id":"c17","m":"M04","l":"c","t":"근무 시간과 추가 점수","d":2,"est":true,"n":"게임 속 시계가 흐르고 시간이 다 되면 업무 끝. 다 처리하면 추가 점수"},{"id":"c18","m":"M04","l":"c","t":"승진","d":2,"est":true,"n":"공적 게이지. 공적이 차야 오르고, 오르면 업무나 기믹이 바뀐다"},{"id":"c19","m":"M04","l":"c","t":"휴식하기 저장","d":2,"est":true,"n":"밤 활동 뒤 휴식하기를 누르면 자동 저장, 다음 날 아침부터 이어 하기"},{"id":"c20","m":"M04","l":"c","t":"면접 기믹 ①","d":3,"est":true,"n":"후보 돋보기. 대리 Lv2 자리"},{"id":"c21","m":"M04","l":"c","t":"미니게임 작은 프로토타입","d":2,"est":true,"n":"규칙을 쓰기 전에 1-2일로 만들어 본다"},{"id":"a21","m":"M05","l":"a","t":"종이와 카드 그림틀","d":5,"est":true,"n":"이력서·공문·카드의 테두리와 아이콘"},{"id":"p31","m":"M05","l":"p","t":"퍼즐·밤·미니게임 숫자 쪽","d":2,"est":true,"n":"공식·예외 상황·조절값·통과 기준 + 검토. 그 코드 직전"},{"id":"p32","m":"M05","l":"p","t":"대리 Lv2·Lv3 케이스","d":7,"est":true,"n":"이틀치씩 8-12명. 사기 부서의 날, 용사 쪽 스파이"},{"id":"p33","m":"M05","l":"p","t":"시간표 퍼즐 문제","d":2,"est":true,"n":"오후 놀이가 매일이라 날마다 새 문제가 필요하다"},{"id":"p34","m":"M05","l":"p","t":"사건 보고서·밤 인물 문구","d":2,"est":true,"n":"다음 날 사고 보고서, 승진한 밤에 만나는 인물의 대사"},{"id":"p35","m":"M05","l":"p","t":"앞 이야기와 튜토리얼","d":3,"est":true,"n":"B14. 왜 여기서 일하게 됐는지, 일을 배우는 첫날. 튜토리얼 케이스는 고정"},{"id":"p36","m":"M05","l":"p","t":"지침 다듬기","d":1,"est":true,"n":"레벨마다 나오는 공문을 실제로 해 보고 다듬기"},{"id":"p37","m":"M05","l":"p","t":"콘텐츠 확정","d":1,"est":true,"n":"3/10. 이 뒤로 케이스를 새로 쓰거나 크게 고치지 않는다"},{"id":"c22","m":"M05","l":"c","t":"면접 기믹 ②","d":3,"est":true,"n":"대리 Lv3 자리. 무엇인지는 면접 GDD"},{"id":"c23","m":"M05","l":"c","t":"사기 부서의 날·스파이","d":2,"est":true,"n":"뒤집힌 지침, 진짜 위험한 거짓말쟁이 걸러 내기"},{"id":"c24","m":"M05","l":"c","t":"시간표 퍼즐","d":4,"est":true,"n":"7월 프로토타입의 구조를 참고해 다시 쓴다"},{"id":"c25","m":"M05","l":"c","t":"미니게임 1종","d":3,"est":true,"n":"M04 프로토타입을 데모용으로"},{"id":"c26","m":"M05","l":"c","t":"밤 파트 축소판","d":5,"est":true,"n":"지도 화면, 일급, 까마귀 상점, 인물 1명 → 카드 1장"},{"id":"c27","m":"M05","l":"c","t":"6레벨 연결","d":2,"est":true,"n":"사원 Lv1부터 대리 Lv3 엔딩까지 끊김 없이 이어 하기"},{"id":"c28","m":"M05","l":"c","t":"아침 사건 보고서","d":2,"est":true,"n":"전날 잘못 뽑은 결과, 퍼즐 규칙을 어긴 배치의 결과"},{"id":"c29","m":"M05","l":"c","t":"엔딩 등급","d":2,"est":true,"n":"S-D 등급과 다음 직급 예고"},{"id":"a22","m":"M06","l":"a","t":"몬스터 종류 늘리기","d":10,"est":true,"n":"고블린 다음 종류들. 늦어지면 고블린 1체 + 색 바꾸기로 줄인다"},{"id":"a23","m":"M06","l":"a","t":"품질 올리기","d":6,"est":true,"n":"면접실과 몬스터 다듬기"},{"id":"p38","m":"M06","l":"p","t":"문구 다듬기","d":5,"est":true,"n":"케이스·공문·카드·대사의 말맛"},{"id":"c30","m":"M06","l":"c","t":"사운드","d":6,"est":true,"n":"진행 방식 미정. 임시 효과음은 M03부터 넣는다"},{"id":"c31","m":"M06","l":"c","t":"연출","d":6,"est":true,"n":"화면 전환, 도장·승진·엔딩 연출"},{"id":"c32","m":"M06","l":"c","t":"튜토리얼","d":3,"est":true,"n":"M05에서 밀리면 여기서 만든다"},{"id":"a24","m":"M07","l":"a","t":"마지막 손질","d":4,"est":true,"n":"눈에 띄는 곳 마지막 손질"},{"id":"p39","m":"M07","l":"p","t":"문구 교정","d":2,"est":true,"n":"맞춤법과 말투"},{"id":"p40","m":"M07","l":"p","t":"제출 자료","d":3,"est":true,"n":"공모전 제출용 설명, 스크린샷, 영상"},{"id":"c33","m":"M07","l":"c","t":"해 보고 나온 문제 고치기","d":6,"est":true,"n":"주변 사람들이 해 보고 나온 문제"},{"id":"c34","m":"M07","l":"c","t":"실행 파일 만들기","d":1,"est":true,"n":"제출용 빌드"},{"id":"c35","m":"M07","l":"c","t":"short 버전","d":1,"est":true,"n":"공적을 쉽게 얻게 밸런스만 바꾼 빌드. 게임 전체를 빠르게 훑어보기(심사·시연용)"}]}</script>
+<script id="app">
+(function () {
+  // 판의 원본 상태 (저장된 판). 되돌리기와 저장의 기준이 된다
+  var BASE = JSON.parse(document.getElementById('state').textContent);
+  var state = JSON.parse(JSON.stringify(BASE));
+  var LANES = [{ k: 'a', name: '아트' }, { k: 'p', name: '기획' }, { k: 'c', name: '코드' }];
+  var moved = new Set();   // 저장 안 한 변경이 있는 카드
+  var dirty = false, readOnly = false, selected = null;
+  var ns = null, nsState = 'pending';   // artifact 저장 기능: pending | ready | none
+
+  // 저장할 때 페이지를 다시 만들기 위한 원본 조각 (실행 중인 화면이 아니라 처음 쓰인 글)
+  var CSS = document.getElementById('css').textContent;
+  var APP = document.getElementById('app').textContent;
+  var FONTS = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Myeongjo:wght@700;800&display=swap">';
+  var RESET = (function () {
+    var list = document.head ? document.head.querySelectorAll('style') : [];
+    for (var i = 0; i < list.length; i++) {
+      var t = list[i].textContent || '';
+      if (t.indexOf('safe-area-inset') >= 0) return t;
+    }
+    return ':root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif;background:#fafafa}img{max-width:100%}[hidden]{display:none!important}';
+  })();
+
+  var root = document.getElementById('root');
+  root.innerHTML =
+    '<header class="top"><div><h1>데모까지 마일스톤 일곱 개</h1>' +
+    '<p class="sub">2026-10-02 살펴보기 ②-가에서 정한 그림 · 제출 2027-04-15 · 주 6일로 센 날 수</p></div>' +
+    '<div class="controls"><button type="button" id="save" class="primary">저장</button>' +
+    '<button type="button" id="discard">저장 안 한 변경 버리기</button>' +
+    '<button type="button" id="copy">글로 복사</button>' +
+    '<span class="status" id="status" aria-live="polite"></span></div></header>' +
+    '<ul class="legend">' +
+    '<li><b>끌어서 옮기기</b> 카드를 다른 칸이나 순서로 끌어다 놓습니다. 끌기가 안 되면 카드를 누르고 옮길 칸의 「여기로」를 누릅니다</li>' +
+    '<li><b>숫자</b> 그 일에 드는 날 수. 누르면 고칠 수 있습니다</li>' +
+    '<li><b>점선 테두리</b> Claude가 어림한 날 수 (할 일 목록이 아직 없는 마일스톤)</li>' +
+    '<li><b>← M03</b> 그 마일스톤에서 당겨 온 일</li></ul>' +
+    '<div class="board-wrap"><div class="board" id="board"></div></div>' +
+    '<div class="foot"><p>칸 위의 「13 / 23일」은 그 갈래에 들어간 날 수와 마일스톤의 날 수입니다. 갈래마다 하루에 한 칸씩 쓴다고 보고 셉니다. 하루 시간 나누기(뽀모도로)가 마일스톤마다 달라서 비교는 어림입니다.</p>' +
+    '<p>저장하면 이 판이 새 판으로 바뀌고, Claude가 나중에 읽어 마일스톤 파일에 옮길 수 있습니다.</p>' +
+    '<textarea id="textout" hidden readonly aria-label="복사할 글"></textarea></div>';
+
+  var board = document.getElementById('board');
+  var saveBtn = document.getElementById('save');
+  var discardBtn = document.getElementById('discard');
+  var copyBtn = document.getElementById('copy');
+  var statusEl = document.getElementById('status');
+
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function fmt(n) { n = +n || 0; return String(Math.round(n * 10) / 10); }
+  function byId(id) { for (var i = 0; i < state.cards.length; i++) if (state.cards[i].id === id) return state.cards[i]; return null; }
+  function sumOf(m, l) { return state.cards.filter(function (c) { return c.m === m && c.l === l; }).reduce(function (a, c) { return a + (+c.d || 0); }, 0); }
+
+  function cardHTML(c) {
+    var cls = 'card' + (c.est ? ' est' : '') + (moved.has(c.id) ? ' changed' : '') + (selected === c.id ? ' sel' : '');
+    return '<li class="' + cls + '" draggable="true" tabindex="0" data-id="' + esc(c.id) + '">' +
+      '<span class="t">' + esc(c.t) + (c.from ? ' <span class="from">' + esc(c.from) + '</span>' : '') +
+      (c.n ? '<span class="cn">' + esc(c.n) + '</span>' : '') + '</span>' +
+      '<button type="button" class="d" data-id="' + esc(c.id) + '" title="날 수 고치기">' + fmt(c.d) + '</button></li>';
+  }
+
+  function render() {
+    var h = '';
+    state.milestones.forEach(function (m, i) {
+      var col = i + 1;
+      h += '<section class="mhead" style="grid-column:' + col + ';grid-row:1">' +
+        '<div class="mid">' + esc(m.id) + '</div><h2>' + esc(m.name) + '</h2>' +
+        '<div class="range">' + esc(m.range) + ' · ' + (m.dn ? esc(m.dn) + ' ' : '') + m.days + '일</div>' +
+        (m.split ? '<div class="split">하루 = ' + esc(m.split) + '</div>' : '') +
+        '<p class="q">' + esc(m.q) + '</p>' + (m.note ? '<p class="mnote">' + esc(m.note) + '</p>' : '') + '</section>';
+      LANES.forEach(function (L, j) {
+        var cards = state.cards.filter(function (c) { return c.m === m.id && c.l === L.k; });
+        var sum = sumOf(m.id, L.k), pct = m.days ? sum / m.days : 0;
+        var lv = pct > 1 ? 'over' : pct > 0.85 ? 'tight' : 'ok';
+        var sel = selected ? byId(selected) : null;
+        var showHere = sel && !(sel.m === m.id && sel.l === L.k);
+        h += '<div class="cell lane-' + L.k + '" data-m="' + m.id + '" data-l="' + L.k + '" style="grid-column:' + col + ';grid-row:' + (j + 2) + '">' +
+          '<div class="lhead"><span class="lname">' + L.name + '</span>' +
+          (showHere ? '<button type="button" class="here">여기로</button>' : '') +
+          '<span class="load ' + lv + '"><b>' + fmt(sum) + '</b> / ' + m.days + '일</span></div>' +
+          '<div class="meter ' + lv + '"><i style="width:' + Math.min(100, pct * 100).toFixed(1) + '%"></i></div>' +
+          '<ul class="cards">' + cards.map(cardHTML).join('') + '</ul></div>';
+      });
+    });
+    board.innerHTML = h;
+    updateControls();
+  }
+
+  function setStatus(t) { statusEl.textContent = t; }
+  function updateControls() {
+    saveBtn.disabled = !dirty || readOnly || nsState !== 'ready';
+    discardBtn.disabled = !dirty;
+    if (readOnly) setStatus('보기 전용입니다. 이 화면에서는 저장할 수 없습니다');
+    else if (dirty) setStatus('저장 안 한 변경 ' + moved.size + '개' + (nsState === 'none' ? ' · 이 화면에는 저장 기능이 없습니다 (「글로 복사」를 쓰세요)' : ''));
+    else if (nsState === 'none') setStatus('이 화면에는 저장 기능이 없습니다. 옮겨 보기만 됩니다');
+    else if (state.savedAt) setStatus('마지막 저장 ' + state.savedAt.slice(0, 16).replace('T', ' '));
+    else setStatus('처음 그림 그대로입니다');
+  }
+
+  // 카드를 옮긴다: beforeId 앞에, 없으면 그 칸의 맨 끝에
+  function moveCard(id, m, l, beforeId) {
+    var arr = state.cards, i = arr.findIndex(function (c) { return c.id === id; });
+    if (i < 0) return;
+    var c = arr.splice(i, 1)[0];
+    c.m = m; c.l = l;
+    var at = -1;
+    if (beforeId && beforeId !== id) at = arr.findIndex(function (x) { return x.id === beforeId; });
+    if (at < 0) {
+      var last = -1;
+      arr.forEach(function (x, k) { if (x.m === m && x.l === l) last = k; });
+      at = last >= 0 ? last + 1 : arr.length;
+    }
+    arr.splice(at, 0, c);
+    moved.add(id); dirty = true; selected = null;
+    render();
+  }
+
+  // 끌어서 옮기기
+  var dragId = null, mark = document.createElement('li');
+  mark.className = 'drop-mark';
+  function beforeCard(ul, y) {
+    var items = ul.querySelectorAll('.card:not(.dragging)');
+    for (var i = 0; i < items.length; i++) {
+      var r = items[i].getBoundingClientRect();
+      if (y < r.top + r.height / 2) return items[i];
+    }
+    return null;
+  }
+  function clearTargets() { board.querySelectorAll('.cell.over-target').forEach(function (x) { x.classList.remove('over-target'); }); }
+  board.addEventListener('dragstart', function (e) {
+    var c = e.target.closest && e.target.closest('.card');
+    if (!c) return;
+    dragId = c.dataset.id;
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', dragId); } catch (_) {}
+    c.classList.add('dragging');
+  });
+  board.addEventListener('dragend', function () {
+    dragId = null; mark.remove(); clearTargets();
+    board.querySelectorAll('.dragging').forEach(function (x) { x.classList.remove('dragging'); });
+  });
+  board.addEventListener('dragover', function (e) {
+    if (!dragId) return;
+    var cell = e.target.closest && e.target.closest('.cell');
+    if (!cell) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    var ul = cell.querySelector('.cards'), before = beforeCard(ul, e.clientY);
+    if (before) ul.insertBefore(mark, before); else ul.appendChild(mark);
+    if (!cell.classList.contains('over-target')) { clearTargets(); cell.classList.add('over-target'); }
+  });
+  board.addEventListener('drop', function (e) {
+    if (!dragId) return;
+    var cell = e.target.closest && e.target.closest('.cell');
+    if (!cell) return;
+    e.preventDefault();
+    var next = mark.nextElementSibling;
+    while (next && !(next.classList.contains('card') && !next.classList.contains('dragging'))) next = next.nextElementSibling;
+    var id = dragId;
+    dragId = null; mark.remove(); clearTargets();
+    moveCard(id, cell.dataset.m, cell.dataset.l, next ? next.dataset.id : null);
+  });
+
+  // 누르기: 날 수 고치기 / 카드 고르기 / 여기로 옮기기
+  board.addEventListener('click', function (e) {
+    var d = e.target.closest('button.d');
+    if (d) { editDays(d); return; }
+    var here = e.target.closest('button.here');
+    if (here && selected) { var cell = here.closest('.cell'); moveCard(selected, cell.dataset.m, cell.dataset.l, null); return; }
+    var card = e.target.closest('.card');
+    if (card) { selected = selected === card.dataset.id ? null : card.dataset.id; render(); }
+  });
+  board.addEventListener('keydown', function (e) {
+    var card = e.target.closest && e.target.closest('.card');
+    if (card && (e.key === 'Enter' || e.key === ' ') && e.target === card) {
+      e.preventDefault(); selected = selected === card.dataset.id ? null : card.dataset.id; render();
+    }
+  });
+
+  function editDays(btn) {
+    var c = byId(btn.dataset.id);
+    if (!c) return;
+    var inp = document.createElement('input');
+    inp.type = 'number'; inp.min = '0'; inp.step = '0.5'; inp.value = c.d; inp.className = 'd-in';
+    inp.id = 'days-' + c.id; inp.setAttribute('aria-label', c.t + ' 날 수');
+    btn.replaceWith(inp); inp.focus(); inp.select();
+    var done = false;
+    function commit(ok) {
+      if (done) return; done = true;
+      if (ok) {
+        var v = parseFloat(inp.value);
+        if (isFinite(v) && v >= 0 && v !== c.d) { c.d = v; c.est = false; moved.add(c.id); dirty = true; }
+      }
+      render();
+    }
+    inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') commit(true); if (ev.key === 'Escape') commit(false); });
+    inp.addEventListener('blur', function () { commit(true); });
+  }
+
+  discardBtn.addEventListener('click', function () {
+    state = JSON.parse(JSON.stringify(BASE)); moved.clear(); dirty = false; selected = null; render();
+  });
+
+  function asText() {
+    var out = [];
+    state.milestones.forEach(function (m) {
+      out.push(m.id + ' ' + m.name + ' (' + m.range + ', ' + m.days + '일)');
+      LANES.forEach(function (L) {
+        out.push('  ' + L.name + ' ' + fmt(sumOf(m.id, L.k)) + '/' + m.days);
+        state.cards.filter(function (c) { return c.m === m.id && c.l === L.k; }).forEach(function (c) {
+          out.push('    - ' + c.t + ' (' + fmt(c.d) + (c.est ? ' 어림' : '') + ')');
+        });
+      });
+    });
+    return out.join('\n');
+  }
+  copyBtn.addEventListener('click', function () {
+    var t = asText(), box = document.getElementById('textout');
+    function show() { box.value = t; box.hidden = false; box.focus(); box.select(); setStatus('아래 글을 선택해 두었습니다. 복사해서 대화창에 붙여 넣으세요'); }
+    try {
+      navigator.clipboard.writeText(t).then(function () { setStatus('글로 복사했습니다. 대화창에 붙여 넣으면 됩니다'); }, show);
+    } catch (_) { show(); }
+  });
+
+  // 저장: 지금 상태로 페이지 전체를 다시 만들어 새 판으로 올린다
+  function buildDoc(s) {
+    var json = JSON.stringify(s).replace(/</g, '\\u003c');
+    return '<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>' + RESET + '<\/style></head><body>' +
+      '<title>' + esc(document.title || '마왕성 인사팀 마일스톤') + '</title>\n' + FONTS + '\n<style id="css">' + CSS + '<\/style>\n<main id="root"></main>\n' +
+      '<script type="application/json" id="state">' + json + '<\/script>\n<script id="app">' + APP + '<\/script></body></html>';
+  }
+  saveBtn.addEventListener('click', function () {
+    if (!ns || !dirty || readOnly) return;
+    var s = JSON.parse(JSON.stringify(state));
+    s.savedAt = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString();
+    saveBtn.disabled = true; setStatus('저장하는 중');
+    ns.publish(buildDoc(s)).then(function () {
+      setStatus('저장했습니다. 새 판으로 다시 불러옵니다');
+    }, function (err) {
+      var code = err && err.code;
+      if (code === 'conflict') setStatus('다른 곳에서 먼저 저장한 판이 있어 그 판으로 다시 불러옵니다');
+      else if (['not_writer', 'not_granted', 'consent_required', 'capability_disabled', 'capability_removed', 'not_declared'].indexOf(code) >= 0) { readOnly = true; updateControls(); }
+      else if (code === 'rate_limited') { setStatus('저장이 너무 잦습니다. 잠시 뒤 다시 눌러 주세요'); saveBtn.disabled = false; }
+      else { setStatus('저장하지 못했습니다. 잠시 뒤 다시 눌러 주세요'); saveBtn.disabled = false; }
+    });
+  });
+
+  render();
+  var cl = window.claude;
+  if (cl && typeof cl.use === 'function') {
+    cl.use('artifact').then(function (x) { ns = x; nsState = x ? 'ready' : 'none'; updateControls(); }, function () { nsState = 'none'; updateControls(); });
+  } else { nsState = 'none'; updateControls(); }
+})();
+</script>
