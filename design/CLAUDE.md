@@ -24,6 +24,13 @@ Every GDD must include all **8 required sections** in this order:
 7. Tuning Knobs — configurable values identified
 8. Acceptance Criteria — testable success conditions
 
+**1번 개요는 한 문단 대신 다섯 줄로 쓴다** (2026-10-03). `/design-system` 스킬의 "한 문단" 안내보다 이것이 먼저다. 한눈에 보는 지도는 미리 만들지 않고, 필요할 때 GDD들의 이 다섯 줄을 모아 만든다(견본 = `design/gdd/gdd-map.canvas`).
+- **무엇** — 이 시스템이 무엇인가, 한 줄
+- **하는 일** — 플레이어가 여기서 하는 일, 한 줄 (플레이어가 직접 보지 않는 시스템이면 그렇다고 적는다)
+- **핵심 규칙** — 가장 중요한 규칙 세 줄
+- **이어짐** — 기대는 시스템과 기대어 오는 시스템
+- **어디까지** — 규칙 쪽·숫자 쪽·검토 중 어디까지 썼나, 남은 쪽은 어느 마일스톤에 하나
+
 **File naming:** `[system-slug].md` (e.g. `movement-system.md`, `combat-system.md`)
 
 **Systems index:** `design/gdd/systems-index.md` — update when adding a new GDD.
