@@ -301,7 +301,6 @@ textarea { resize: vertical; min-height: 64px; }
 .seg .seg-btn.on { background: var(--ink-2); color: var(--bg); }
 #history-mode .seg-btn { padding: 4px 12px; }
 .h-date.wide { width: 150px; }
-.h-pomo { color: var(--muted); flex: none; width: 44px; font-size: 12px; }
 .history-item.sub { padding: 4px 4px; font-size: 14px; }
 .sub-list { margin: 6px 0 4px; }
 .sub-list li { padding: 0; }
@@ -312,13 +311,8 @@ textarea { resize: vertical; min-height: 64px; }
 .bars .tick { fill: var(--muted); font-size: 11px; }
 .bars .val { fill: var(--ink-2); font-size: 11px; }
 .bars .bar-hours { fill: #9a7a48; }                                 /* 근무 시간 — 어두운 배경 대비 3:1 이상 (검증 스크립트 통과) */
-.bars .bar-focus { fill: var(--accent); stroke: var(--card-2); stroke-width: 2; } /* 그중 집중 — 겹친 막대에 2px 표면 테두리 */
 .bars .hit { fill: transparent; }
 .bars .bar-g:hover .bar-hours { fill: #b3945f; }
-.legend-bars { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin: 2px 0 6px 34px; }
-.legend-bars i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
-.legend-bars .sw-hours { background: #9a7a48; }
-.legend-bars .sw-focus { background: var(--accent); }
 
 /* ── 도장 ── */
 .stamp { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; pointer-events: none; --stamp-color: var(--danger); --stamp-dur: 1500ms; }

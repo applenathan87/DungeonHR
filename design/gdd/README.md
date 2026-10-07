@@ -15,6 +15,6 @@
 
 ## 다음 작업
 
-1. ~~`systems-index.md` 작성~~ → 완료 (2026-09-12). 시스템 12개, 데모에 필요한 것 10개. 설계 순서 (2026-10-02 확정, game-flow 7번) = 하루와 레벨 → 지침 → 판정 → 승진·경제 → 1차 면접(M01) → 책상 위 물건 다루기 → 케이스 데이터 양식(M02) → 면접 시간표 퍼즐 · 밤 파트 · 미니게임(M04).
-2. 시스템별 GDD — `/design-system [시스템]`으로 여덟 칸을 쓴다: 개요(Overview) · 플레이어가 느낄 것(Player Fantasy) · 상세 규칙(Detailed Rules) · 공식(Formulas) · 예외 상황(Edge Cases) · 다른 시스템과의 관계(Dependencies) · 조절값(Tuning Knobs) · 통과 기준(Acceptance Criteria). **앞의 넷(규칙 쪽)을 먼저 쓰고, 뒤의 넷(숫자 쪽: 공식·예외 상황·조절값·통과 기준)은 그 부분의 코드 직전에 채운다.** 1번 개요는 다섯 줄로 쓴다([design/CLAUDE.md](../CLAUDE.md)). 순서와 범위는 [systems-index.md](systems-index.md). 질문은 글로 주고받고, 전문 에이전트는 값이 필요한 칸에만 쓴다.
-3. 각 GDD는 숫자 쪽을 채운 뒤 새 세션에서 `/design-review [파일] --depth lean`으로 검토한다(M03·M04 첫 주). GDD끼리 어긋난 곳은 M04에 `/review-all-gdds`.
+1. ~~`systems-index.md` 작성~~ → 완료 (2026-09-12). 시스템 12개, 데모에 필요한 것 10개. 설계 순서 (2026-10-02 확정, game-flow 7번) = 하루와 레벨 → 당일 지침 → 판정 → 승진·경제 → 1차 면접(M01) → 조작 → 케이스 데이터 양식(M02) → 면접 시간표 퍼즐 · 밤 파트 · 미니게임(M04).
+2. 시스템별 GDD — `/design-system [시스템]`으로 여덟 칸을 쓴다: 개요(Overview) · 플레이어가 느낄 것(Player Fantasy) · 상세 규칙(Detailed Rules) · 공식(Formulas) · 예외 상황(Edge Cases) · 다른 시스템과의 관계(Dependencies) · 조절값(Tuning Knobs) · 통과 기준(Acceptance Criteria). **앞의 넷(룰북)을 먼저 쓰고, 뒤의 넷(밸런스: 공식·예외 상황·조절값·통과 기준)은 그 부분의 코드 직전에 채운다.** 1번 개요는 다섯 줄로 쓴다([design/CLAUDE.md](../CLAUDE.md)). 순서와 범위는 [systems-index.md](systems-index.md). 질문은 글로 주고받고, 전문 에이전트는 값이 필요한 칸에만 쓴다.
+3. 각 GDD는 밸런스를 채운 뒤 새 세션에서 `/design-review [파일] --depth lean`으로 검토한다(M03·M04 첫 주). GDD끼리 어긋난 곳은 M04에 `/review-all-gdds`.

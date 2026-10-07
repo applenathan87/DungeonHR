@@ -29,7 +29,7 @@ Every GDD must include all **8 required sections** in this order:
 - **하는 일** — 플레이어가 여기서 하는 일, 한 줄 (플레이어가 직접 보지 않는 시스템이면 그렇다고 적는다)
 - **핵심 규칙** — 가장 중요한 규칙 세 줄
 - **이어짐** — 기대는 시스템과 기대어 오는 시스템
-- **어디까지** — 규칙 쪽·숫자 쪽·검토 중 어디까지 썼나, 남은 쪽은 어느 마일스톤에 하나
+- **어디까지** — 룰북·밸런스·검토 중 어디까지 썼나, 남은 쪽은 어느 마일스톤에 하나
 
 **File naming:** `[system-slug].md` (e.g. `movement-system.md`, `combat-system.md`)
 

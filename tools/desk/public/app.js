@@ -210,7 +210,7 @@ function renderWork() {
     c.append(
       el('span', { class: 'status-badge closed' }, '퇴근 완료'),
       el('h2', {}, `Day ${S.todayDay.day} — ${S.todayDay.summary}`),
-      el('p', { class: 'muted' }, `오늘 ${fmtHours(S.todayDay.hours)} · ${S.todayDay.sessions.join(', ')}${pomoSuffix(S.todayDay)}`),
+      el('p', { class: 'muted' }, `오늘 ${fmtHours(S.todayDay.hours)} · ${S.todayDay.sessions.join(', ')}`),
       renderDayReport(),
       el('div', { class: 'actions' },
         el('button', { class: 'btn', onclick: () => showDay(S.today) }, '오늘 일지 보기'),
@@ -468,17 +468,15 @@ function renderAddToToday() {
   return det;
 }
 
-/** 뽀모도로 패널 (근무 중일 때만). 대기 / 집중 / 휴식 세 모습 */
+/**
+ * 뽀모도로 패널 (근무 중일 때만). 대기 / 집중 / 휴식 세 모습.
+ * 뽀모도로는 쓰고 싶을 때만 쓰는 타이머라 개수·집중 시간은 화면에 보여 주지 않는다 (2026-10-07, 사용자).
+ */
 function renderPomodoro() {
   const cfg = pomoCfg();
   const pomo = S.pomo;
-  const count = S.active.pomodoros || 0;
-  const partial = S.active.partialMinutes || 0; // 중간에 멈춘 집중(분)
   const box = el('div', { class: 'pomo' });
-  const head = (label) => el('div', { class: 'pomo-head' },
-    el('span', { class: 'pomo-label' }, label),
-    el('span', { class: 'muted small-text' }, `오늘 ${count}개 완료${partial ? ` + ${partial}분` : ''}`),
-  );
+  const head = (label) => el('div', { class: 'pomo-head' }, el('span', { class: 'pomo-label' }, label));
   if (!pomo) {
     box.append(
       head('뽀모도로'),
@@ -560,7 +558,7 @@ async function doClockOut(e) {
     const d = r.day;
     stamp('퇴근', 'green', {
       message: '오늘도 수고하셨습니다!',
-      sub: `Day ${d.day} · ${fmtDuration(d.workedMinutes)}${pomoSuffix(d)}`,
+      sub: `Day ${d.day} · ${fmtDuration(d.workedMinutes)}`,
       duration: 3200,
       confetti: true,
     });
@@ -701,26 +699,13 @@ function computeStats() {
   return { todayH: hours[S.today] || 0, week, month, total, days, streak };
 }
 
-/**
- * 뽀모도로 표시 글자: 끝까지 채운 개수 + 중간에 멈춘 집중(분). 예: "뽀모도로 2개 + 40분".
- * 둘 다 없으면 빈 글자. 개수는 끝까지 채운 것만 세고, 멈춘 분은 집중 시간에만 들어간다.
- */
-const pomoText = (d, unit = '개') => {
-  const n = (d && d.pomodoros) || 0;
-  const m = (d && d.partialMinutes) || 0;
-  if (!n && !m) return '';
-  return `뽀모도로 ${n}${unit}${m ? ` + ${m}분` : ''}`;
-};
-/** 앞에 " · "를 붙인 것 (한 줄 요약 끝에 이어 붙일 때) */
-const pomoSuffix = (d, unit = '개') => (pomoText(d, unit) ? ` · ${pomoText(d, unit)}` : '');
-
 function renderStats() {
   const s = computeStats();
   const tile = (label, value, sub) => el('div', { class: 'tile' }, el('div', { class: 'tile-value' }, value), el('div', { class: 'tile-label' }, label), sub ? el('div', { class: 'tile-sub muted' }, sub) : null);
   const row = $('#stats-row');
   row.innerHTML = '';
   row.append(
-    tile('오늘', fmtHours(s.todayH), pomoText(S.todayDay) || null),
+    tile('오늘', fmtHours(s.todayH)),
     tile('이번 주', fmtHours(s.week)),
     tile('이번 달', fmtHours(s.month)),
     tile('연속 출근', `${s.streak}일`),
@@ -816,7 +801,7 @@ function tooltipHtml(ds) {
   return (
     head +
     `<div class="tt-title">${esc(d.summary || '(퇴근 전)')}</div>` +
-    `<div class="tt-hours">${fmtHours(h)}${d.status === 'open' ? ' · 출근 중' : d.status === 'away' ? ' · 부재 중' : ''}${pomoSuffix(d, '')}</div>` +
+    `<div class="tt-hours">${fmtHours(h)}${d.status === 'open' ? ' · 출근 중' : d.status === 'away' ? ' · 부재 중' : ''}</div>` +
     (items.length ? `<ul>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '')
   );
 }
@@ -913,7 +898,7 @@ function showDay(date) {
  */
 function renderDayCard(d) {
   const when = d.status === 'open' ? '출근 중' : d.status === 'away' ? '부재 중' : fmtHours(d.hours);
-  const meta = `${d.date.slice(0, 4)}년 ${fmtDate(d.date)} · Day ${d.day} · ${when}${d.sessions.length ? ' · ' + d.sessions.join(', ') : ''}${pomoSuffix(d)}`;
+  const meta = `${d.date.slice(0, 4)}년 ${fmtDate(d.date)} · Day ${d.day} · ${when}${d.sessions.length ? ' · ' + d.sessions.join(', ') : ''}`;
   const didRow = (line) => {
     const m = /^\[(완료|진행)\]\s*(.*)$/.exec(line);
     if (!m) return reportRow('•', 'plain', line, '');            // ver01 줄 (표기 없음)
@@ -934,7 +919,7 @@ function renderDayCard(d) {
 }
 
 // ── 주 · 월 ──
-const periodStats = (p) => `출근 ${p.workDays}일 · ${fmtHours(p.hours)} · 집중 ${fmtHours(p.focusHours)}${p.hours ? ` (${Math.round(p.focusRatio * 100)}%)` : ''} · 완료 ${p.done.length}`;
+const periodStats = (p) => `출근 ${p.workDays}일 · ${fmtHours(p.hours)} · 완료 ${p.done.length}`;
 const periodLabel = (p, kind) => (kind === 'week' ? `${p.key.slice(5)} · ${mdShort(p.start)} ~ ${mdShort(p.end)}` : `${p.key.slice(0, 4)}년 ${Number(p.key.slice(5))}월`);
 
 function renderPeriods(ul, list, kind) {
@@ -960,16 +945,16 @@ function renderPeriodCard(p, kind) {
       const date = dateStr(addDays(parseDate(p.start), i));
       const d = p.days.find((x) => x.date === date);
       bars.push({
-        label: WEEKDAYS[(i + 1) % 7], hours: d ? d.hours : 0, focus: d ? d.focusHours : 0,
+        label: WEEKDAYS[(i + 1) % 7], hours: d ? d.hours : 0,
         tip: d
-          ? `<div class="tt-title">${esc(mdShort(date))} (${WEEKDAYS[(i + 1) % 7]}) · Day ${d.day}</div><div class="tt-hours">${fmtHours(d.hours)} · 집중 ${fmtHours(d.focusHours)} (${pomoText(d, '') || '뽀모도로 0'})</div>${d.summary ? `<div>${esc(d.summary)}</div>` : ''}`
+          ? `<div class="tt-title">${esc(mdShort(date))} (${WEEKDAYS[(i + 1) % 7]}) · Day ${d.day}</div><div class="tt-hours">${fmtHours(d.hours)}</div>${d.summary ? `<div>${esc(d.summary)}</div>` : ''}`
           : `<div class="tt-title">${esc(mdShort(date))} (${WEEKDAYS[(i + 1) % 7]})</div><div class="muted">기록 없음</div>`,
       });
     }
   } else {
     for (const w of p.weeks) {
       bars.push({
-        label: w.key.slice(5), hours: w.hours, focus: w.focusHours,
+        label: w.key.slice(5), hours: w.hours,
         tip: `<div class="tt-title">${esc(w.key.slice(5))} · ${esc(mdShort(w.start))} ~ ${esc(mdShort(w.end))}</div><div class="tt-hours">${esc(periodStats(w))}</div>`,
       });
     }
@@ -978,7 +963,6 @@ function renderPeriodCard(p, kind) {
     ? p.days.map((d) => el('li', {}, el('button', { class: 'history-item sub', onclick: () => showDay(d.date) },
         el('span', { class: 'h-date' }, `${mdShort(d.date)} (${WEEKDAYS[d.dow]})`),
         el('span', { class: 'h-hours' }, d.status === 'closed' ? fmtHours(d.hours) : '출근 중'),
-        el('span', { class: 'h-pomo' }, d.pomodoros ? `뽀 ${d.pomodoros}` : ''),
         el('span', { class: 'h-title' }, d.summary || '(퇴근 전)'),
       )))
     : p.weeks.map((w) => el('li', {}, el('button', { class: 'history-item sub', onclick: () => { histMode = 'week'; openedPeriod = w.key; renderHistory(); } },
@@ -986,12 +970,8 @@ function renderPeriodCard(p, kind) {
         el('span', { class: 'h-title' }, periodStats(w)),
       )));
   return el('div', { class: 'day-card period-card' },
-    el('div', { class: 'muted small-text' }, `${periodLabel(p, kind)} · ${periodStats(p)}${pomoSuffix(p)}`),
+    el('div', { class: 'muted small-text' }, `${periodLabel(p, kind)} · ${periodStats(p)}`),
     barChart(bars),
-    el('div', { class: 'legend-bars' },
-      el('span', {}, el('i', { class: 'sw-hours' }), '근무 시간'),
-      el('span', {}, el('i', { class: 'sw-focus' }), '그중 집중(뽀모도로)'),
-    ),
     el('ul', { class: 'list history sub-list' }, rows),
     section('완료한 것', p.done.map((t) => reportRow('✓', 'done', t, ''))),
     section(kind === 'week' ? '주말에 진행 중으로 남은 것' : '월말에 진행 중으로 남은 것', p.doing.map((t) => reportRow('◐', 'doing', t, ''))),
@@ -1017,7 +997,7 @@ const roundedTop = (x, top, w, h) => {
   return `M${x},${top + h} V${top + r} Q${x},${top} ${x + r},${top} H${x + w - r} Q${x + w},${top} ${x + w},${top + r} V${top + h} Z`;
 };
 /**
- * bars = [{ label, hours, focus, tip }] — 바깥 막대 = 근무 시간, 안쪽 막대 = 그중 집중(뽀모도로). 같은 단위라 축은 하나.
+ * bars = [{ label, hours, tip }] — 막대 = 근무 시간. (안쪽의 집중(뽀모도로) 막대는 2026-10-07에 뺐다 — 뽀모도로는 쓰고 싶을 때만 쓴다)
  * 격자는 옅게, 값 표시는 가장 긴 막대 하나만, 나머지는 호버 툴팁으로.
  */
 function barChart(bars) {
@@ -1028,7 +1008,7 @@ function barChart(bars) {
   const top = Math.ceil(max / step) * step;
   const y = (h) => padT + innerH - (h / top) * innerH;
   const n = Math.max(1, bars.length), slot = innerW / n, bw = Math.min(44, slot * 0.6);
-  const g = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'bars', role: 'img', 'aria-label': '근무 시간과 집중 시간 막대 그래프' });
+  const g = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'bars', role: 'img', 'aria-label': '근무 시간 막대 그래프' });
   for (let h = 0; h <= top; h += step) {
     g.append(svg('line', { x1: padL, x2: W - padR, y1: y(h), y2: y(h), class: 'grid' }));
     g.append(svg('text', { x: padL - 6, y: y(h) + 4, class: 'tick', 'text-anchor': 'end' }, `${h}h`));
@@ -1040,7 +1020,6 @@ function barChart(bars) {
     const grp = svg('g', { class: 'bar-g', onpointerover: (e) => tip(e.currentTarget, b.tip), onpointerout: hideTooltip });
     grp.append(svg('rect', { x: cx - slot / 2 + 1, y: padT, width: Math.max(1, slot - 2), height: innerH, class: 'hit' })); // 막대보다 큰 호버 영역
     if (b.hours > 0) grp.append(svg('path', { d: roundedTop(x, y(b.hours), bw, y(0) - y(b.hours)), class: 'bar-hours' }));
-    if (b.focus > 0) grp.append(svg('path', { d: roundedTop(x + bw * 0.2, y(b.focus), bw * 0.6, y(0) - y(b.focus)), class: 'bar-focus' }));
     if (i === maxIdx && b.hours > 0) grp.append(svg('text', { x: cx, y: y(b.hours) - 5, class: 'val', 'text-anchor': 'middle' }, fmtHours(b.hours)));
     grp.append(svg('text', { x: cx, y: H - 6, class: 'tick', 'text-anchor': 'middle' }, b.label));
     g.append(grp);
