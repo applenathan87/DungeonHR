@@ -90,7 +90,7 @@
 - **라이벌의 일일 이벤트**가 낮 규칙을 바꾼다: Roxanne 마나 포션 덤핑, Corsac 고객 완고, Finn 치료제 판매 금지, Anubia 지역 봉쇄 — 서사 인물이 경제 규칙에 개입하는 유일한 결합 지점.
 
 **[해석]**
-- 포셔노믹스의 서브스토리는 **"보상 봉투"**지 판단·분기 장치가 아니다. 우리 뇌물 서브스토리(도덕 축) 같은 것의 선례는 여기에 없다 — 그 계보는 Papers, Please(EZIC)다. 다만 "이벤트가 **다음날 규칙**을 바꾼다"는 기계 결합(라이벌 이벤트)은 우리 "지침 누적" 후크와 바로 결합된다: 밤의 사건 → 다음날 특수 지침.
+- 포셔노믹스의 서브스토리는 **"보상 봉투"**지 판단·분기 장치가 아니다. 우리 뇌물 서브스토리(도덕 축) 같은 것의 선례는 여기에 없다 — 그 계보는 Papers, Please(EZIC)다. 다만 "이벤트가 **다음날 규칙**을 바꾼다"는 기계 결합(라이벌 이벤트)은 우리 "당일 지침" 후크와 바로 결합된다: 밤의 사건 → 다음 날의 당일 지침.
 
 출처: [Fandom Daily Events](https://potionomics.fandom.com/wiki/Daily_Events) · [TV Tropes 캐릭터(스토리 아크)](https://tvtropes.org/pmwiki/pmwiki.php/Characters/Potionomics) · [Fandom Dating](https://potionomics.fandom.com/wiki/Dating) · [스팀 공지 Patch 10/19/22](https://steamcommunity.com/games/1874490/announcements/detail/3396302964501602391) · [SteamAH 대화 가이드](https://steamah.com/potionomics-all-dialogue-answers-guide/) · [Incomplete Guide](https://steamcommunity.com/sharedfiles/filedetails/?id=2934132288)
 
