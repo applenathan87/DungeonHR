@@ -8,7 +8,7 @@
 ├── .claude/                     # Agent definitions, skills, hooks, rules, docs
 ├── game/                        # ⭐ 유니티 프로젝트 (Unity 6000.5.1f1 + URP) — M01에 Unity Hub로 생성 (아직 없음). M03 전까지 LookTest 씬만, 게임플레이 코드 없음
 │                                #   Hub: Location=C:\DungeonHR, Project name=game. 미리 만들어 두지 않는다 (Hub가 거부). 생성 직후 game/CLAUDE.md 추가
-├── artwork/                     # 아트 원본 작업 파일 (2026-09-30) — room/ · characters/ · _study/(강의 연습, gitignored). .blend 커밋, .spp·블렌더 백업 제외. 규칙 = artwork/README.md
+├── artwork/                     # 아트 원본 작업 파일 (2026-09-30) — room/ · characters/ · logo/(게임 로고, 2026-10-07) · _study/(강의 연습, gitignored). .blend 커밋, .spp·블렌더 백업 제외. 규칙 = artwork/README.md
 ├── design/                      # 기획 = 볼트의 심장
 │   ├── concept/                 # 현행 기획 정본 (concept-demon-hr · mvp-design · interview_idea … · build-roadmap(구현 순서 초안) · refs/ 목업) ← 옛 ideation/
 │   ├── gdd/                     # 정식 GDD (8섹션 표준) — M01~M04에 나눠 쓴다 (곧 만들 부분의 GDD만). _archive/README = 죽은 컨셉 연혁
