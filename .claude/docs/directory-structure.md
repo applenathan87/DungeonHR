@@ -6,7 +6,7 @@
 /
 ├── CLAUDE.md                    # Master configuration (일하는 법 · 정본 링크 · 지금 어디)
 ├── .claude/                     # Agent definitions, skills, hooks, rules, docs
-├── game/                        # ⭐ 유니티 프로젝트 (Unity 6000.5.1f1 + URP) — M01에 Unity Hub로 생성 (아직 없음). M03 전까지 LookTest 씬만, 게임플레이 코드 없음
+├── game/                        # ⭐ 유니티 프로젝트 (Unity 6000.5.1f1 + URP) — 2026-10-08 Unity Hub로 생성 (규칙 = game/CLAUDE.md). M03 전까지 LookTest 씬만, 게임플레이 코드 없음
 │                                #   Hub: Location=C:\DungeonHR, Project name=game. 미리 만들어 두지 않는다 (Hub가 거부). 생성 직후 game/CLAUDE.md 추가
 ├── artwork/                     # 아트 원본 작업 파일 (2026-09-30) — room/ · characters/ · logo/(게임 로고, 2026-10-07) · _study/(강의 연습, gitignored). .blend 커밋, .spp·블렌더 백업 제외. 규칙 = artwork/README.md
 ├── design/                      # 기획 = 볼트의 심장
