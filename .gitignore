@@ -149,6 +149,8 @@ image/
 
 # === 출근부 로컬 상태 (tools/desk) ===
 tools/desk/.pomo.json
+# 오늘의 한 장 원본 — D 드라이브가 없는 컴퓨터(맥북 등)에서 대신 쓰는 폴더 (가벼운 판은 production/desk/shots/ 에 커밋)
+tools/desk/.shots-original/
 
 # === 개인 서류 (게임과 무관 — 커밋 안 함) ===
 ETC/

@@ -267,6 +267,7 @@ textarea { resize: vertical; min-height: 64px; }
 .tt-hours { color: var(--accent); font-size: 12px; margin-bottom: 4px; }
 .tooltip ul { padding-left: 14px; list-style: disc; color: var(--ink-2); }
 .tooltip li { margin: 1px 0; }
+.tt-shot { display: block; width: 276px; height: 155px; object-fit: cover; border-radius: 6px; margin: 4px 0 6px; } /* 크기를 정해 둬야 사진이 늦게 떠도 툴팁 위치가 맞다 */
 
 /* ── 지난 데브로그 ── */
 .history-item {
@@ -422,3 +423,30 @@ input.note-input { flex-basis: 100%; margin: 6px 0 2px; font-size: 13px; padding
 .report-row.doing .report-icon { color: var(--accent); }
 .report-row.planned .report-icon { color: var(--ink-2); }
 .clockout .list.picked { margin-bottom: 6px; }
+
+/* ── 오늘의 한 장 (하루 한 장 사진, 2026-10-11) ── */
+.shot-slot { margin-top: 14px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; }
+.shot-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.shot-thumb { display: block; height: 72px; max-width: 160px; object-fit: cover; border-radius: 6px; cursor: zoom-in; }
+.shot-over { border-color: var(--accent) !important; background: rgba(242, 169, 59, 0.06); } /* 사진 파일을 끌고 왔을 때 놓을 자리 */
+.link-btn { border: 0; background: none; padding: 0; color: var(--ink-2); text-decoration: underline; cursor: pointer; font-size: 13px; }
+.link-btn:hover { color: var(--ink); }
+.day-path .link-btn { margin-left: 10px; font-size: 12px; }
+.h-shot { margin-left: auto; flex: none; width: 40px; height: 26px; object-fit: cover; border-radius: 4px; } /* 지난 데브로그 줄 끝 */
+.day-shot { margin-top: 10px; }
+.day-shot-img { display: block; max-width: 100%; max-height: 280px; border-radius: 8px; cursor: zoom-in; }
+.day-shot-actions { display: flex; gap: 6px; margin-top: 6px; }
+.shot-strip { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
+.shot-cell { border: 0; padding: 0; background: none; cursor: zoom-in; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--muted); font-size: 11px; }
+.shot-cell img { display: block; width: 112px; height: 70px; object-fit: cover; border-radius: 6px; }
+.shot-cell:hover img { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* 크게 보기 — 도장(70)보다 위, 토스트(80)보다 아래 */
+.viewer { position: fixed; inset: 0; z-index: 75; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px 80px; background: rgba(10, 8, 6, 0.92); cursor: zoom-out; }
+.viewer-img { max-width: 100%; max-height: calc(100vh - 100px); object-fit: contain; border-radius: 6px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6); }
+.viewer-cap { color: var(--ink-2); font-size: 14px; text-align: center; }
+.viewer-nav { position: absolute; top: 50%; transform: translateY(-50%); width: 48px; height: 80px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: var(--ink); font-size: 40px; line-height: 1; cursor: pointer; }
+.viewer-nav:hover { background: rgba(255, 255, 255, 0.14); }
+.viewer-nav.prev { left: 16px; }
+.viewer-nav.next { right: 16px; }
+@media (max-width: 720px) { .viewer { padding: 16px; } .viewer-nav { width: 36px; } }

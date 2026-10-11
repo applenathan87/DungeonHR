@@ -51,6 +51,7 @@ const DEFAULTS = {
   maxPick: 3,
   pomodoro: { focus: 50, break: 10 }, // 뽀모도로 집중/휴식 (분)
   boardFile: '../../production/milestones/board.json', // 마일스톤 판 데이터 (tools/desk 기준)
+  shotOriginalDir: 'D:/DungeonHR-shots', // 사진 원본 폴더 (git 밖). 이 드라이브가 없는 컴퓨터(맥북 등)에서는 tools/desk/.shots-original
 };
 
 function loadConfig() {
@@ -73,6 +74,15 @@ const PUBLIC_DIR = path.join(ROOT, 'public');
 const BOARD_PATH = process.env.DESK_DATA_DIR
   ? path.join(DATA_DIR, 'board.json')
   : path.resolve(ROOT, config.boardFile);
+// 오늘의 한 장: 가벼운 판은 데이터 폴더 안(git 에 같이 커밋), 원본은 git 밖
+const SHOT_DIR = path.join(DATA_DIR, 'shots');
+const SHOT_ORIG_DIR = (() => {
+  if (process.env.DESK_DATA_DIR) return path.join(DATA_DIR, 'shots-original'); // 시험용 서버는 진짜 원본 폴더를 건드리지 않는다
+  const dir = config.shotOriginalDir;
+  // 설정한 폴더의 드라이브가 이 컴퓨터에 있을 때만 쓴다 (맥북에는 D: 가 없다)
+  if (dir && path.isAbsolute(dir) && fs.existsSync(path.parse(dir).root)) return path.resolve(dir);
+  return path.join(ROOT, '.shots-original');
+})();
 const NO_OPEN = process.argv.includes('--no-open');
 const NO_GIT = process.argv.includes('--no-git') || process.env.DESK_NO_GIT === '1';
 
@@ -237,7 +247,8 @@ function readDay(date) {
 }
 
 function writeDay(day) {
-  writeFileAtomic(dayPath(day.date), serializeFrontmatter(day.fm) + '\n\n' + day.body);
+  // 본문 앞의 빈 줄은 뗀다 — parseDoc 이 빈 줄 하나만 떼므로, 그대로 붙이면 저장할 때마다 머리 아래 빈 줄이 하나씩 늘어난다
+  writeFileAtomic(dayPath(day.date), serializeFrontmatter(day.fm) + '\n\n' + day.body.replace(/^(\r?\n)+/, ''));
 }
 
 function listDays() {
@@ -302,6 +313,7 @@ function summarizeDay(d) {
     blocked: bulletsOf(find('막힌 것')),
     next: bulletsOf(find('다음에 할 것')),
     recap: bulletsOf(find('하루 요약')),   // 퇴근 뒤 Claude 가 적는 칸 (폼에는 없음 — 모르는 섹션으로 보존되고, 화면에는 읽어서만 보여 준다)
+    shot: shotVersion(d.date),            // 오늘의 한 장 — 있으면 파일 시각(사진 주소 뒤에 붙인다), 없으면 0
   };
 }
 
@@ -607,6 +619,76 @@ function saveBoard(cards, version) {
   return { board: next, version: boardFile.version(text) };
 }
 
+// ───────────────────────── 오늘의 한 장 (하루 한 장 사진, 2026-10-11) ─────────────────────────
+// 가벼운 판 = 데이터 폴더 shots/날짜.jpg — 화면이 긴 쪽 1600px JPG 로 줄여서 보낸다. 데이터 폴더라 퇴근 때 같이 커밋된다.
+// 원본 = SHOT_ORIG_DIR/날짜.png 등 붙여 넣은 그대로 (git 밖). 같은 날 다시 넣으면 둘 다 바뀐다.
+// 데브로그 본문 끝에 "## 오늘의 한 장" + 이미지 링크를 적어 옵시디언에서도 사진이 보이게 한다.
+const SHOT_SECTION = '오늘의 한 장';
+const ORIG_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/bmp': 'bmp' };
+const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+const shotPath = (date) => path.join(SHOT_DIR, `${date}.jpg`);
+
+/** 사진이 있으면 파일을 고친 시각(ms), 없으면 0 — 화면이 주소 뒤에 붙여서, 사진을 바꾸면 브라우저가 새로 받는다 */
+function shotVersion(date) {
+  try { return Math.floor(fs.statSync(shotPath(date)).mtimeMs); } catch { return 0; }
+}
+
+/** 그날 원본 파일 (확장자는 붙여 넣은 형식마다 다르다). 없으면 null */
+function origShotPath(date) {
+  if (!fs.existsSync(SHOT_ORIG_DIR)) return null;
+  const name = fs.readdirSync(SHOT_ORIG_DIR).find((f) => f.startsWith(`${date}.`) && Object.values(ORIG_EXT).includes(f.slice(date.length + 1)));
+  return name ? path.join(SHOT_ORIG_DIR, name) : null;
+}
+
+/** "data:image/png;base64,…" → { type, buf } */
+function decodeDataUrl(s) {
+  const m = /^data:([\w/+.-]+);base64,(.*)$/s.exec(String(s || ''));
+  if (!m) throw new Error('사진 데이터가 아닙니다');
+  return { type: m[1], buf: Buffer.from(m[2], 'base64') };
+}
+
+/** 데브로그 본문 끝의 "## 오늘의 한 장" 절을 넣거나(on) 뺀다. 이미 그 상태면 파일을 건드리지 않는다 */
+function linkShotInDay(day, on) {
+  const secs = parseSections(day.body);
+  if (secs.some((s) => s.name === SHOT_SECTION) === on) return;
+  if (on) {
+    day.body = `${day.body.trimEnd()}\n\n## ${SHOT_SECTION}\n![](../shots/${day.date}.jpg)\n`;
+  } else {
+    const parts = secs
+      .filter((s) => s.name !== SHOT_SECTION)
+      .map((s) => (s.name === null ? s.lines.join('\n') : `## ${s.name}\n${s.lines.join('\n')}`))
+      .filter((t) => t.trim());
+    day.body = parts.join('\n').trimEnd() + '\n';
+  }
+  writeDay(day);
+}
+
+/** 사진 저장: 원본을 먼저 쓰고(실패하면 가벼운 판도 안 바꾼다) 가벼운 판 → 데브로그 링크 */
+function saveShot(date, lightUrl, origUrl) {
+  if (!isDate(date)) throw new Error('날짜가 이상합니다: ' + date);
+  const day = readDay(date);
+  if (!day) throw new Error('출근한 날에만 사진을 넣을 수 있습니다');
+  const light = decodeDataUrl(lightUrl);
+  if (light.type !== 'image/jpeg' || light.buf[0] !== 0xff || light.buf[1] !== 0xd8) throw new Error('가벼운 판은 JPG 여야 합니다');
+  const orig = decodeDataUrl(origUrl);
+  const ext = ORIG_EXT[orig.type];
+  if (!ext) throw new Error('원본 형식을 알 수 없습니다: ' + orig.type);
+  const old = origShotPath(date);
+  const origFile = path.join(SHOT_ORIG_DIR, `${date}.${ext}`);
+  writeFileAtomic(origFile, orig.buf); // writeFileAtomic 은 Buffer 도 그대로 쓴다 (글자 인코딩은 문자열에만 적용)
+  if (old && old !== origFile) fs.unlinkSync(old); // 형식이 바뀌었으면(png → jpg) 옛 원본은 지운다
+  writeFileAtomic(shotPath(date), light.buf);
+  linkShotInDay(day, true);
+}
+
+/** 사진 지우기: 가벼운 판 + 원본 + 데브로그 링크 */
+function deleteShot(date) {
+  if (!isDate(date)) throw new Error('날짜가 이상합니다: ' + date);
+  for (const f of [shotPath(date), origShotPath(date)]) if (f && fs.existsSync(f)) fs.unlinkSync(f);
+  const day = readDay(date);
+  if (day) linkShotInDay(day, false);
+}
+
 // ───────────────────────── git (데이터 폴더 + 마일스톤 판만 커밋 → 푸시) ─────────────────────────
 function git(args, cwd) {
   return new Promise((resolve) => {
@@ -672,6 +754,7 @@ function stateJson() {
       autoPush: config.autoPush && !NO_GIT,
     },
     dataDir: DATA_DIR,
+    shotOrigDir: SHOT_ORIG_DIR, // 사진 원본이 들어가는 폴더 (화면 안내문용)
   };
 }
 
@@ -683,6 +766,10 @@ const MIME = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.bmp': 'image/bmp',
   '.ico': 'image/x-icon',
 };
 
@@ -693,13 +780,26 @@ function send(res, code, body, type = 'application/json; charset=utf-8') {
 const json = (res, obj, code = 200) => send(res, code, JSON.stringify(obj));
 const fail = (res, e, code = 400) => json(res, { error: e && e.message ? e.message : String(e) }, code);
 
-function readBody(req) {
+/** JSON 본문 읽기. limit(바이트)을 넘으면 거절 — 사진 올리기만 크게 연다 */
+function readBody(req, limit = 1e6) {
   return new Promise((resolve, reject) => {
-    let b = '';
-    req.on('data', (c) => { b += c; if (b.length > 1e6) req.destroy(); });
-    req.on('end', () => { try { resolve(b ? JSON.parse(b) : {}); } catch (e) { reject(e); } });
+    const chunks = [];
+    let size = 0;
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > limit) { reject(new Error('보낸 내용이 너무 큽니다')); req.destroy(); return; }
+      chunks.push(c);
+    });
+    // 조각을 다 모은 뒤 한 번에 글자로 바꾼다 — 한글이 조각 경계에서 잘려 깨지지 않게
+    req.on('end', () => { try { const b = Buffer.concat(chunks).toString('utf8'); resolve(b ? JSON.parse(b) : {}); } catch (e) { reject(e); } });
     req.on('error', reject);
   });
+}
+
+/** 사진 파일 보내기. 주소에 ?v=파일시각 이 붙어 있어 사진이 바뀌면 주소도 바뀌므로 브라우저가 오래 기억해도 된다 */
+function sendImage(res, file) {
+  res.writeHead(200, { 'Content-Type': MIME[path.extname(file).toLowerCase()] || 'application/octet-stream', 'Cache-Control': 'max-age=31536000, immutable' });
+  fs.createReadStream(file).pipe(res);
 }
 
 function serveStatic(res, urlPath) {
@@ -721,6 +821,25 @@ async function handle(req, res) {
       const date = p.slice('/api/devlog/'.length);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !fs.existsSync(dayPath(date))) return fail(res, new Error('없는 날짜'), 404);
       return json(res, { date, text: fs.readFileSync(dayPath(date), 'utf8') });
+    }
+
+    if (req.method === 'GET' && p.startsWith('/api/shot/')) {
+      // 오늘의 한 장. ?original=1 이면 원본 (원본이 없는 컴퓨터에서는 가벼운 판)
+      const date = p.slice('/api/shot/'.length);
+      if (!isDate(date)) return fail(res, new Error('없는 날짜'), 404);
+      const orig = url.searchParams.get('original') === '1' ? origShotPath(date) : null;
+      const file = orig || shotPath(date);
+      if (!fs.existsSync(file)) return fail(res, new Error('사진 없음'), 404);
+      return sendImage(res, file);
+    }
+
+    if (req.method === 'POST' && p === '/api/shot') {
+      // { action: 'save', date, light, original } — light·original 은 data URL / { action: 'delete', date }
+      const body = await readBody(req, 80e6); // 원본 약 55MB 까지 (base64 로 1.33배가 된다)
+      if (body.action === 'save') saveShot(body.date, body.light, body.original);
+      else if (body.action === 'delete') deleteShot(body.date);
+      else throw new Error('알 수 없는 동작: ' + body.action);
+      return json(res, { ok: true, state: stateJson() });
     }
 
     if (req.method === 'POST' && p === '/api/clockin') {
@@ -834,6 +953,7 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log('└──────────────────────────────────────────┘');
   console.log(`  화면    : ${url}`);
   console.log(`  데이터  : ${DATA_DIR}`);
+  console.log(`  사진 원본: ${SHOT_ORIG_DIR}`);
   console.log(`  시즌    : ${config.seasonStart} 부터  ·  자동 푸시: ${config.autoPush && !NO_GIT ? 'ON' : 'OFF'}`);
   console.log('  끄기    : 이 창을 닫거나 Ctrl+C');
   openBrowser(url);

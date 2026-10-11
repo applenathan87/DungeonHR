@@ -195,6 +195,7 @@ function renderWork() {
       renderPickedList(),
       renderAddToToday(),
       away ? el('p', { class: 'muted small-text pomo-note' }, '부재 중에는 뽀모도로가 멈춥니다. 복귀하면 다시 시작할 수 있습니다.') : renderPomodoro(),
+      renderShotSlot(S.active.date),
       el('div', { class: 'actions' },
         away
           ? el('button', { class: 'btn primary big', onclick: doBack }, '복귀')
@@ -212,6 +213,7 @@ function renderWork() {
       el('h2', {}, `Day ${S.todayDay.day} — ${S.todayDay.summary}`),
       el('p', { class: 'muted' }, `오늘 ${fmtHours(S.todayDay.hours)} · ${S.todayDay.sessions.join(', ')}`),
       renderDayReport(),
+      renderShotSlot(S.today),
       el('div', { class: 'actions' },
         el('button', { class: 'btn', onclick: () => showDay(S.today) }, '오늘 일지 보기'),
         el('button', { class: 'btn primary big', onclick: doClockIn }, '다시 출근'),
@@ -696,7 +698,10 @@ function computeStats() {
   let streak = 0;
   let cur = has.has(S.today) ? today : addDays(today, -1);
   while (has.has(dateStr(cur))) { streak++; cur = addDays(cur, -1); }
-  return { todayH: hours[S.today] || 0, week, month, total, days, streak };
+  // 하루 평균 = 총 시간 ÷ 지난 날 수 (쉰 날·오늘 포함). 주는 월요일부터, 달은 1일부터 오늘까지
+  const weekElapsed = (today.getDay() + 6) % 7 + 1;
+  const monthElapsed = today.getDate();
+  return { todayH: hours[S.today] || 0, week, weekAvg: week / weekElapsed, month, monthAvg: month / monthElapsed, total, days, streak };
 }
 
 function renderStats() {
@@ -706,8 +711,8 @@ function renderStats() {
   row.innerHTML = '';
   row.append(
     tile('오늘', fmtHours(s.todayH)),
-    tile('이번 주', fmtHours(s.week)),
-    tile('이번 달', fmtHours(s.month)),
+    tile('이번 주', fmtHours(s.week), `하루 평균 ${fmtHours(s.weekAvg)}`),
+    tile('이번 달', fmtHours(s.month), `하루 평균 ${fmtHours(s.monthAvg)}`),
     tile('연속 출근', `${s.streak}일`),
     tile('시즌 누적', fmtHours(s.total), `${s.days}일 출근`),
   );
@@ -798,10 +803,12 @@ function tooltipHtml(ds) {
   const head = `<div class="tt-date">${year}${fmtDate(ds)}${d ? ` · Day ${d.day}` : ''}</div>`;
   if (!d) return head + '<div class="muted">출근 기록 없음</div>';
   const items = (d.did.length ? d.did : d.done).slice(0, 6);
+  const shot = shotUrl(ds); // 사진 칸은 크기가 정해져 있어서, 사진이 늦게 떠도 툴팁 위치가 틀어지지 않는다
   return (
     head +
     `<div class="tt-title">${esc(d.summary || '(퇴근 전)')}</div>` +
     `<div class="tt-hours">${fmtHours(h)}${d.status === 'open' ? ' · 출근 중' : d.status === 'away' ? ' · 부재 중' : ''}</div>` +
+    (shot ? `<img class="tt-shot" src="${shot}" alt="">` : '') +
     (items.length ? `<ul>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '')
   );
 }
@@ -870,6 +877,7 @@ function renderHistory() {
         el('span', { class: 'pill small' }, `Day ${d.day}`),
         el('span', { class: 'h-hours' }, d.status === 'open' ? '출근 중' : d.status === 'away' ? '부재 중' : fmtHours(d.hours)),
         el('span', { class: 'h-title' }, d.summary || '(퇴근 전)'),
+        d.shot ? el('img', { class: 'h-shot', src: shotUrl(d.date), alt: '', loading: 'lazy' }) : null, // 사진 있는 날만 줄 끝에 작게
       ),
     );
     if (open) li.append(renderDayCard(d));
@@ -907,15 +915,29 @@ function renderDayCard(d) {
   };
   const recap = d.recap || []; // "하루 요약" 칸 — 퇴근 뒤 Claude 가 파일에 적는다 (없는 날은 칸이 안 보인다)
   const empty = !d.did.length && !recap.length && !d.memo.length && !d.next.length;
-  return el('div', { class: 'day-card' },
+  const shot = shotUrl(d.date);
+  const card = el('div', { class: 'day-card' },
     el('div', { class: 'muted small-text' }, meta),
+    shot
+      ? el('div', { class: 'day-shot' },
+          el('img', { class: 'day-shot-img', src: shot, alt: `${d.date} 사진`, title: '누르면 크게', onclick: () => openViewer([d.date], 0) }),
+          el('div', { class: 'day-shot-actions' },
+            el('button', { class: 'btn small', onclick: () => pickShot(d.date) }, '사진 바꾸기'),
+            el('button', { class: 'btn small', onclick: () => removeShot(d.date) }, '지우기'),
+          ),
+        )
+      : null,
     section('한 일', d.did.map(didRow)),
     section('메모', d.memo.map((t) => reportRow('•', 'plain', t, ''))),
     section('하루 요약', recap.map((t) => reportRow('•', 'plain recap', t, ''))),
     section('다음에 할 것', d.next.map((t) => reportRow('→', 'planned', t, ''))),
     empty ? el('p', { class: 'muted small-text' }, '기록이 비어 있습니다.') : null,
-    el('div', { class: 'muted small-text day-path' }, `파일: production/desk/devlog/${d.date}.md`),
+    el('div', { class: 'muted small-text day-path' },
+      `파일: production/desk/devlog/${d.date}.md`,
+      shot ? null : el('button', { class: 'link-btn', onclick: () => pickShot(d.date) }, '사진 넣기'), // 사진 없는 날은 맨 아래 작은 버튼만
+    ),
   );
+  return shotDrop(card, d.date); // 이 카드에 사진 파일을 끌어다 놓으면 그날 사진
 }
 
 // ── 주 · 월 ──
@@ -972,6 +994,7 @@ function renderPeriodCard(p, kind) {
   return el('div', { class: 'day-card period-card' },
     el('div', { class: 'muted small-text' }, `${periodLabel(p, kind)} · ${periodStats(p)}`),
     barChart(bars),
+    renderShotStrip(p.days.map((d) => d.date)),
     el('ul', { class: 'list history sub-list' }, rows),
     section('완료한 것', p.done.map((t) => reportRow('✓', 'done', t, ''))),
     section(kind === 'week' ? '주말에 진행 중으로 남은 것' : '월말에 진행 중으로 남은 것', p.doing.map((t) => reportRow('◐', 'doing', t, ''))),
@@ -1027,6 +1050,175 @@ function barChart(bars) {
   g.append(svg('line', { x1: padL, x2: W - padR, y1: y(0), y2: y(0), class: 'axis' }));
   return g;
 }
+
+// ── 오늘의 한 장 (하루 한 장 사진, 2026-10-11) ──
+// 넣기 = 어디서든 Ctrl+V 또는 사진 파일을 끌어다 놓기(오늘) · 지난 날 카드에 놓거나 "사진 넣기"(그날).
+// 화면이 원본을 긴 쪽 1600px JPG(가벼운 판, git 에 커밋)로 줄이고, 원본은 그대로 같이 보낸다(서버가 git 밖 폴더에 둔다).
+// 꼭 넣어야 하는 칸이 아니다 — 사진 없는 날을 빈칸이나 경고로 표시하지 않는다.
+const SHOT_MAX = 1600;     // 가벼운 판의 긴 쪽 (px)
+const SHOT_QUALITY = 0.85; // 가벼운 판 JPG 화질 (0~1) — 한 장 200~300KB 정도
+const IS_MAC = /Mac/.test(navigator.platform);
+const dayOf = (date) => S.days.find((d) => d.date === date);
+/** 사진 주소 (없으면 null). v = 파일 시각이라 사진을 바꾸면 주소도 바뀐다. original = 크게 보기용 원본 */
+const shotUrl = (date, original) => { const d = dayOf(date); return d && d.shot ? `/api/shot/${date}?v=${d.shot}${original ? '&original=1' : ''}` : null; };
+/** Ctrl+V · 아무 데나 놓기의 대상 = 근무 중인 날(자정을 넘겨도 출근한 날), 퇴근 뒤면 오늘. 출근 전이면 없음 */
+const shotTargetDate = () => (S.active ? S.active.date : S.todayDay ? S.today : null);
+
+/** 그림 파일 → 가벼운 판 data URL (브라우저 캔버스로 줄인다 — 라이브러리 없음) */
+async function makeLight(file) {
+  const src = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, bad) => {
+      const i = new Image();
+      i.onload = () => ok(i);
+      i.onerror = () => bad(new Error('이 사진 형식은 읽을 수 없습니다 (PNG·JPG·WEBP 를 써 주세요)'));
+      i.src = src;
+    });
+    const scale = Math.min(1, SHOT_MAX / Math.max(img.naturalWidth, img.naturalHeight)); // 작은 사진은 키우지 않는다
+    const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
+    const cv = el('canvas', { width: w, height: h });
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#1e1a17'; // JPG 에는 투명이 없어서, 투명한 PNG(블렌더 렌더 등)는 카드 색으로 채운다
+    ctx.fillRect(0, 0, w, h);
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, 0, 0, w, h);
+    return cv.toDataURL('image/jpeg', SHOT_QUALITY);
+  } finally {
+    URL.revokeObjectURL(src);
+  }
+}
+const readAsDataUrl = (file) => new Promise((ok, bad) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => bad(r.error); r.readAsDataURL(file); });
+
+let shotBusy = false; // 저장 중에 또 붙여 넣으면 무시
+/** 그날 사진으로 저장. 이미 있으면 한 번 묻고 바꾼다 (하루 한 장) */
+async function putShot(date, file) {
+  if (!date) return toast('출근한 뒤에 사진을 넣을 수 있습니다', true);
+  if (!file || !/^image\//.test(file.type)) return toast('그림 파일만 넣을 수 있습니다', true);
+  if (shotBusy) return;
+  const d = dayOf(date);
+  if (!d) return toast('출근한 날에만 사진을 넣을 수 있습니다', true);
+  const label = date === S.today ? '오늘' : fmtDate(date);
+  if (d.shot && !confirm(`${label} 사진을 이 사진으로 바꿀까요?\n원본도 같이 바뀝니다.`)) return;
+  shotBusy = true;
+  toast('사진 저장 중…');
+  try {
+    const [light, original] = await Promise.all([makeLight(file), readAsDataUrl(file)]);
+    const r = await api('/api/shot', { action: 'save', date, light, original });
+    S = r.state;
+    render();
+    toast(`${label}의 한 장을 저장했습니다`);
+  } catch (e) {
+    toast(e.message, true);
+  } finally {
+    shotBusy = false;
+  }
+}
+
+/** 파일 고르기 창으로 넣기 */
+function pickShot(date) {
+  const input = el('input', { type: 'file', accept: 'image/*', onchange: () => input.files[0] && putShot(date, input.files[0]) });
+  input.click();
+}
+
+async function removeShot(date) {
+  if (!confirm(`${fmtDate(date)} 사진을 지울까요?\n가벼운 판과 원본이 함께 지워집니다.`)) return;
+  try {
+    const r = await api('/api/shot', { action: 'delete', date });
+    S = r.state;
+    render();
+    toast('사진을 지웠습니다');
+  } catch (e) {
+    toast(e.message, true);
+  }
+}
+
+/** 사진 파일을 끌어다 놓는 자리로 만든다. 할 일 카드 끌기(글자)와 섞이지 않게 파일일 때만 반응한다 */
+const isFileDrag = (e) => [...(e.dataTransfer ? e.dataTransfer.types : [])].includes('Files');
+function shotDrop(node, date) {
+  node.addEventListener('dragover', (e) => { if (!isFileDrag(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; node.classList.add('shot-over'); });
+  node.addEventListener('dragleave', (e) => { if (!node.contains(e.relatedTarget)) node.classList.remove('shot-over'); });
+  node.addEventListener('drop', (e) => { if (!isFileDrag(e)) return; e.preventDefault(); node.classList.remove('shot-over'); putShot(date, e.dataTransfer.files[0]); });
+  return node;
+}
+
+/** 오늘 카드의 "오늘의 한 장" 칸 — 있으면 작은 사진(누르면 크게), 없으면 넣는 방법 한 줄 */
+function renderShotSlot(date) {
+  const url = shotUrl(date);
+  const paste = IS_MAC ? '⌘V' : 'Ctrl+V';
+  const pick = el('button', { class: 'link-btn', onclick: () => pickShot(date) }, '파일 고르기');
+  return shotDrop(el('div', { class: 'shot-slot' },
+    el('span', { class: 'field-label' }, '오늘의 한 장'),
+    url
+      ? el('div', { class: 'shot-row' },
+          el('img', { class: 'shot-thumb', src: url, alt: `${date} 사진`, title: '누르면 크게', onclick: () => openViewer([date], 0) }),
+          el('span', { class: 'muted small-text' }, `바꾸려면 ${paste} · 끌어다 놓기 · `, pick),
+        )
+      : el('div', { class: 'shot-row' },
+          el('span', { class: 'muted small-text' }, `화면 캡처(${IS_MAC ? '⌘⇧4' : 'Win+Shift+S'}) 뒤 ${paste} · 사진 끌어다 놓기 · `, pick),
+        ),
+  ), date);
+}
+
+/** 주·월 카드의 사진 모음 — 사진 있는 날만 날짜 순서대로. 누르면 크게 보고 ← → 로 넘긴다 */
+function renderShotStrip(dates) {
+  const has = dates.filter((x) => shotUrl(x));
+  if (!has.length) return null;
+  return el('div', { class: 'day-section' },
+    el('div', { class: 'day-section-title' }, `사진 ${has.length}장`),
+    el('div', { class: 'shot-strip' },
+      has.map((date, i) => el('button', { class: 'shot-cell', title: fmtDate(date), onclick: () => openViewer(has, i) },
+        el('img', { src: shotUrl(date), alt: '', loading: 'lazy' }),
+        el('span', {}, `${mdShort(date)} (${WEEKDAYS[parseDate(date).getDay()]})`),
+      )),
+    ),
+  );
+}
+
+// 크게 보기: 화면 가득. 아무 데나 누르거나 Esc 로 닫고, 여러 장이면 ← → (또는 양옆 버튼)으로 넘긴다
+let viewer = null; // { dates, i }
+function openViewer(dates, i) { viewer = { dates, i }; drawViewer(); }
+function stepViewer(n) { if (!viewer) return; viewer.i = (viewer.i + n + viewer.dates.length) % viewer.dates.length; drawViewer(); }
+function drawViewer() {
+  const box = $('#viewer');
+  box.innerHTML = '';
+  if (!viewer) { box.hidden = true; return; }
+  const date = viewer.dates[viewer.i];
+  const d = dayOf(date);
+  const many = viewer.dates.length > 1;
+  const nav = (cls, n, label) => el('button', { class: `viewer-nav ${cls}`, title: n < 0 ? '이전 (←)' : '다음 (→)', onclick: (e) => { e.stopPropagation(); stepViewer(n); } }, label);
+  box.append(
+    el('img', { class: 'viewer-img', src: shotUrl(date, true), alt: `${date} 사진` }), // 원본 (없는 컴퓨터에서는 서버가 가벼운 판을 준다)
+    el('div', { class: 'viewer-cap' },
+      `${date.slice(0, 4)}년 ${fmtDate(date)}${d ? ` · Day ${d.day}${d.summary ? ` — ${d.summary}` : ''}` : ''}${many ? ` · ${viewer.i + 1}/${viewer.dates.length}` : ''}`),
+    many ? nav('prev', -1, '‹') : null,
+    many ? nav('next', 1, '›') : null,
+  );
+  box.hidden = false;
+}
+$('#viewer').addEventListener('click', () => { viewer = null; drawViewer(); });
+document.addEventListener('keydown', (e) => {
+  if (!viewer) return;
+  if (e.key === 'Escape') { viewer = null; drawViewer(); }
+  else if (e.key === 'ArrowLeft') stepViewer(-1);
+  else if (e.key === 'ArrowRight') stepViewer(1);
+});
+
+// 어디서든 Ctrl+V = 오늘 사진. 글자 붙여 넣기는 평소대로 둔다 (클립보드에 그림 파일이 있을 때만 가로챈다)
+document.addEventListener('paste', (e) => {
+  if (!S) return;
+  const item = [...((e.clipboardData && e.clipboardData.items) || [])].find((i) => i.kind === 'file' && i.type.startsWith('image/'));
+  if (!item) return;
+  e.preventDefault();
+  putShot(shotTargetDate(), item.getAsFile());
+});
+// 사진 파일을 아무 데나 놓아도 오늘 사진. 지난 날 카드에 놓은 것은 그 카드가 먼저 처리한다(defaultPrevented).
+// 이게 없으면 칸 밖에 놓친 사진을 브라우저가 열어 버려 출근부를 떠난다.
+window.addEventListener('dragover', (e) => { if (isFileDrag(e)) e.preventDefault(); });
+window.addEventListener('drop', (e) => {
+  if (!isFileDrag(e) || e.defaultPrevented) return;
+  e.preventDefault();
+  if (S) putShot(shotTargetDate(), e.dataTransfer.files[0]);
+});
 
 // ── 도장 · 토스트 · 타이머 ──
 /**
