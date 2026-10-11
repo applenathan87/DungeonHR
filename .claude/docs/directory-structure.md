@@ -14,7 +14,7 @@
 │   ├── gdd/                     # 정식 GDD (8섹션 표준) — M01~M04에 나눠 쓴다 (곧 만들 부분의 GDD만). _archive/README = 죽은 컨셉 연혁
 │   ├── art/                     # 아트 바이블(STALE, 재작성 대기) · visual-polish
 │   └── research/                # notes/(기획 이론 노트) · takeaways.md(읽기 볼트 결론) · ref-games/(레퍼런스 게임 조사 ← 옛 REF_GAME/)
-├── docs/                        # 기술 문서 — architecture/(ADR) · pipeline/(블렌더 로우폴리 가이드, 블렌더→유니티, art-courses = 강의·자료 링크 목록) · onboarding-brief · WORKFLOW-GUIDE
+├── docs/                        # 기술 문서 — architecture/(ADR) · pipeline/(블렌더 로우폴리 가이드, 블렌더→유니티 — 제작 규칙만) · onboarding-brief · WORKFLOW-GUIDE
 │   └── engine-reference/        # Curated engine API snapshots (version-pinned)
 ├── production/                  # 기록·PM
 │   ├── desk/                    # 출근부 데이터 (todo.md = 오늘 할 일(당긴 것 ≤3 + 잡무) · devlog/YYYY-MM-DD.md) — 유일한 작업 기록
@@ -22,6 +22,7 @@
 │   ├── session-state/           # Session state (active.md)
 │   ├── session-logs/            # Session audit trail (gitignored)
 │   └── reorg-2026-09.md         # 2026-09 폴더 재정비 기록
+├── study/                       # 아트 공부 자료 (2026-10-11 docs/pipeline에서 옮김, 파일 이름 한글) — 스타트(입구) · 블렌더-강의 · 페인터-강의 · 안콜3D-강의 · 블렌더-모디파이어-강의 · 스컬핑-브러시-강의 · 스마트-머티리얼-목록 · 블렌더-주의할-점
 ├── tools/desk/                  # 출근부 앱 (의존성 0, 출근.bat 더블클릭)
 ├── _archive/                    # 참고 전용 보관소 (README = 인덱스)
 │   ├── unity-prototype/         # 2026-07 그레이박스 프로토 (MawangHR S1~S3a) — 캐시 삭제됨, 열면 Unity가 재생성

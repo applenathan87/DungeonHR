@@ -21,4 +21,4 @@
 - **백업** (2026-10-08 정함): 아직 연습본 수준이라 `.spp`는 저장소가 아니라 **구글 드라이브(`G:\내 드라이브`) 안에서 바로 작업**한다 — 드라이브 동기화가 곧 백업이다. 이름은 단계 규칙대로 짓는다(예: `logo_texture.spp`). 완성본이 나오기 시작하면 드라이브에 폴더 구조를 따로 파서 관리한다.
 - **큰 파일**: GitHub는 100MB가 넘는 파일을 받지 않는다. 스컬핑한 `.blend`가 50MB를 넘기 시작하면 그때 처리 방법을 정한다.
 - 블렌더 버전·단위·FBX 익스포트 설정은 [docs/pipeline/](../docs/pipeline/blender-to-unity.md)에 적는다 (M01 백로그 02).
-- 강의·자료 링크 목록 = [docs/pipeline/art-courses.md](../docs/pipeline/art-courses.md).
+- 강의·자료 링크 목록 = [study/스타트.md](../study/스타트.md) (공부 자료는 최상위 `study/`에 모은다).
