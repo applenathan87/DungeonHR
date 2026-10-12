@@ -24,7 +24,7 @@
 - [ ] 기획: 옛 문서 고치기
 - [ ] 점검: M01 마감 10/28
 - [/] 아트: Substance Painter 기초 강의
-  > 진행: Tutorial Full Workflow - Making a Stylized Watering Can | Blender & Painter (English) 44:25 · 2026-10-10
+  > 진행: Tutorial Full Workflow - Making a Stylized Watering Can | Blender & Painter (English) 1:24:00 · 2026-10-12
 
 ## 완료
 - [x] 아트: 레퍼런스 검색 및 정리
